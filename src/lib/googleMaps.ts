@@ -54,12 +54,11 @@ export function areaGoogleSearchUrl(
 }
 
 /**
- * Google's own place types, grouped into the four Sahiti categories.
- *
- * These are the exact `types` values Nearby Search accepts. Keeping the
- * mapping here means the API route and the UI cannot drift apart.
+ * Google's own place types for the optional Places overlay.
+ * Only the original Sahiti trades are searchable via Places; corridor-only
+ * categories stay map-local and are not sent to Google.
  */
-export const GOOGLE_PLACE_TYPES: Record<ShopCategory, string[]> = {
+export const GOOGLE_PLACE_TYPES: Partial<Record<ShopCategory, string[]>> = {
   Hardware: ["hardware_store"],
   "General store": ["grocery_store", "supermarket", "convenience_store"],
   Salon: ["hair_salon", "beauty_salon"],
@@ -68,8 +67,11 @@ export const GOOGLE_PLACE_TYPES: Record<ShopCategory, string[]> = {
 
 /** Reverse lookup, used to label a Google result with a Sahiti category. */
 export function categoryForGoogleTypes(types: string[]): ShopCategory | null {
-  for (const category of Object.keys(GOOGLE_PLACE_TYPES) as ShopCategory[]) {
-    if (GOOGLE_PLACE_TYPES[category].some((type) => types.includes(type))) return category;
+  for (const [category, placeTypes] of Object.entries(GOOGLE_PLACE_TYPES) as [
+    ShopCategory,
+    string[],
+  ][]) {
+    if (placeTypes.some((type) => types.includes(type))) return category;
   }
   return null;
 }

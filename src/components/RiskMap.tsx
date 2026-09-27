@@ -85,8 +85,19 @@ function colorFor(score: number) {
   return "#B91C1C";
 }
 
-function makeShopIcon(category: ShopCategory) {
-  const color = SHOP_CATEGORY_COLORS[category];
+/** Risk colours from the SIH corridor gather, used to tint corridor pins. */
+const RISK_COLORS = ["#10b981", "#f59e0b", "#ef4444"] as const;
+
+/**
+ * Pin colour for a shop: corridor rows use the SIH risk colour (green =
+ * opportunity, amber = moderate, red = saturated); everything else keeps the
+ * category colour.
+ */
+function shopPinColor(shop: Shop): string {
+  return shop.corridor?.riskColor ?? SHOP_CATEGORY_COLORS[shop.category];
+}
+
+function makeShopIcon(color: string) {
   return L.divIcon({
     // Custom class name so Leaflet's default .leaflet-div-icon box never applies.
     className: "sahiti-shop-pin",
@@ -101,8 +112,7 @@ function makeShopIcon(category: ShopCategory) {
 }
 
 /** Bubble showing how many shops folded together, tinted by the commonest type. */
-function makeClusterIcon(count: number, category: ShopCategory) {
-  const color = SHOP_CATEGORY_COLORS[category];
+function makeClusterIcon(count: number, color: string) {
   // Bubbles grow a little with the count, then stop, so a 19-shop market does
   // not swamp the map.
   const size = Math.min(30 + count * 2, 46);
@@ -173,8 +183,38 @@ function FocusOnArea({ focus, token }: { focus: ShopFocus | null; token: number 
   return null;
 }
 
+/** Sky-blue candidate marker, matching the SIH simulator's picked location. */
+export type MapCandidate = { lat: number; lng: number };
+
+/** Corridor anchor hubs, straight from the SIH gather. */
+const CORRIDOR_HUBS = [
+  {
+    name: "ADYPU Knowledge City",
+    note: "15,000+ student base",
+    lat: 18.6226,
+    lng: 73.9063,
+  },
+  {
+    name: "Lohegaon Central Junction",
+    note: "Major transit & market core",
+    lat: 18.5955,
+    lng: 73.9268,
+  },
+] as const;
+
+/** Forwards map clicks so the page can run its feasibility simulator. */
+function ClickCatcher({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(event) {
+      onPick(event.latlng.lat, event.latlng.lng);
+    },
+  });
+  return null;
+}
+
 /** Everything a shop popup shows. Factual OpenStreetMap fields only. */
 function ShopPopupBody({ shop }: { shop: Shop }) {
+  const corridor = shop.corridor;
   return (
     <div className="sahiti-popup">
       <p className="sahiti-popup__name">
@@ -190,7 +230,26 @@ function ShopPopupBody({ shop }: { shop: Shop }) {
         </span>
         {shop.locality}
       </p>
+      {shop.rating !== undefined ? (
+        <p className="sahiti-popup__line">
+          ★ {shop.rating.toFixed(1)}
+          {shop.reviewCount !== undefined ? ` (${shop.reviewCount} reviews)` : ""}
+        </p>
+      ) : null}
       <p className="sahiti-popup__line">{formatShopAddress(shop)}</p>
+      {corridor?.distToAdypuKm !== undefined || corridor?.distToLohegaonKm !== undefined ? (
+        <p className="sahiti-popup__line">
+          {corridor?.distToAdypuKm !== undefined
+            ? `${corridor.distToAdypuKm} km to ADYPU`
+            : null}
+          {corridor?.distToAdypuKm !== undefined && corridor?.distToLohegaonKm !== undefined
+            ? " · "
+            : null}
+          {corridor?.distToLohegaonKm !== undefined
+            ? `${corridor.distToLohegaonKm} km to Lohegaon`
+            : null}
+        </p>
+      ) : null}
       {shop.phone ? (
         <p className="sahiti-popup__line">
           <a href={"tel:" + shop.phone.replace(/\s+/g, "")}>{shop.phone}</a>
@@ -199,6 +258,27 @@ function ShopPopupBody({ shop }: { shop: Shop }) {
       {shop.openingHours ? <p className="sahiti-popup__line">{shop.openingHours}</p> : null}
       {shop.payments && shop.payments.length > 0 ? (
         <p className="sahiti-popup__line">Accepts {shop.payments.join(", ")}</p>
+      ) : null}
+      {shop.riskLevel ? (
+        <p className="sahiti-popup__line">
+          Competition:{" "}
+          {shop.riskLevel === "low"
+            ? "Low (higher opportunity)"
+            : shop.riskLevel === "high"
+              ? "High (saturated)"
+              : "Moderate"}
+          {shop.competitorsNearby !== undefined
+            ? ` · ${shop.competitorsNearby} similar within 400 m`
+            : ""}
+        </p>
+      ) : null}
+      {shop.riskDescription ? (
+        <p className="sahiti-popup__line">{shop.riskDescription}</p>
+      ) : null}
+      {shop.recommendedSchemes && shop.recommendedSchemes.length > 0 ? (
+        <p className="sahiti-popup__line">
+          Schemes: {shop.recommendedSchemes.slice(0, 2).map((scheme) => scheme.name).join(", ")}
+        </p>
       ) : null}
       <p className="sahiti-popup__coords">{formatShopCoordinates(shop)}</p>
       <p className="sahiti-popup__actions">
@@ -214,7 +294,11 @@ function ShopPopupBody({ shop }: { shop: Shop }) {
           </a>
         ) : null}
       </p>
-      <p className="sahiti-popup__source">Listed in OpenStreetMap</p>
+      <p className="sahiti-popup__source">
+        {shop.source === "adypu-corridor"
+          ? `ADYPU–Lohegaon corridor dataset${corridor?.dataSource ? ` · ${corridor.dataSource}` : " (OSM gather)"}`
+          : "Listed in OpenStreetMap"}
+      </p>
     </div>
   );
 }
@@ -241,7 +325,7 @@ function ShopLayer({
           <Marker
             key={group.key}
             position={[group.lat, group.lng]}
-            icon={icons[group.shops[0]!.category]}
+            icon={icons[shopPinColor(group.shops[0]!)]}
           >
             <Popup>
               <ShopPopupBody shop={group.shops[0]!} />
@@ -251,7 +335,7 @@ function ShopLayer({
           <Marker
             key={group.key}
             position={[group.lat, group.lng]}
-            icon={makeClusterIcon(group.shops.length, dominantCategory(group.shops))}
+            icon={makeClusterIcon(group.shops.length, SHOP_CATEGORY_COLORS[dominantCategory(group.shops)])}
             eventHandlers={{
               // Clicking a bubble is the fastest way in, so zoom to the shops
               // it stands for rather than opening another list.
@@ -298,6 +382,9 @@ export default function RiskMap({
   focusToken = 0,
   areaFocus = null,
   areaFocusToken = 0,
+  candidate = null,
+  onMapClick,
+  showHubs = false,
 }: {
   zones: RiskPlace[];
   shops: Shop[];
@@ -305,20 +392,28 @@ export default function RiskMap({
   focusToken?: number;
   areaFocus?: ShopFocus | null;
   areaFocusToken?: number;
+  /** Simulator's picked location, drawn as a sky-blue dot. */
+  candidate?: MapCandidate | null;
+  /** Present when the page wants map clicks (feasibility simulator). */
+  onMapClick?: (lat: number, lng: number) => void;
+  /** Show the ADYPU / Lohegaon corridor anchor markers. */
+  showHubs?: boolean;
 }) {
   const [basemap, setBasemap] = useState<BasemapId>("streets");
   const active = BASEMAPS.find((option) => option.id === basemap) ?? BASEMAPS[0];
 
-  const shopIcons = useMemo(
-    () =>
-      Object.fromEntries(
-        (Object.keys(SHOP_CATEGORY_COLORS) as ShopCategory[]).map((category) => [
-          category,
-          makeShopIcon(category),
-        ]),
-      ) as Record<ShopCategory, L.DivIcon>,
-    [],
-  );
+  // One icon per colour actually in use: category colours plus the three
+  // SIH risk colours corridor pins are tinted with.
+  const shopIcons = useMemo(() => {
+    const colors = new Set<string>([
+      ...Object.values(SHOP_CATEGORY_COLORS),
+      ...RISK_COLORS,
+    ]);
+    return Object.fromEntries([...colors].map((color) => [color, makeShopIcon(color)])) as Record<
+      string,
+      L.DivIcon
+    >;
+  }, []);
 
   return (
     <div className="relative">
@@ -335,6 +430,48 @@ export default function RiskMap({
 
         <RecenterOnUser position={userPosition} token={focusToken} />
         <FocusOnArea focus={areaFocus} token={areaFocusToken} />
+        {onMapClick ? <ClickCatcher onPick={onMapClick} /> : null}
+
+        {/* Corridor anchors, as on the SIH dashboard. */}
+        {showHubs
+          ? CORRIDOR_HUBS.map((hub) => (
+              <CircleMarker
+                key={hub.name}
+                center={[hub.lat, hub.lng]}
+                radius={7}
+                pathOptions={{ color: "#0f172a", weight: 2, fillColor: "#38bdf8", fillOpacity: 1 }}
+              >
+                <Popup>
+                  <div className="sahiti-popup">
+                    <p className="sahiti-popup__name">{hub.name}</p>
+                    <p className="sahiti-popup__line">{hub.note}</p>
+                    <p className="sahiti-popup__source">Corridor anchor · SIH PS 26091 gather</p>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            ))
+          : null}
+
+        {/* Candidate location picked for the feasibility simulator. */}
+        {candidate ? (
+          <CircleMarker
+            center={[candidate.lat, candidate.lng]}
+            radius={11}
+            pathOptions={{ color: "#ffffff", weight: 2, fillColor: "#38bdf8", fillOpacity: 0.9 }}
+          >
+            <Popup>
+              <div className="sahiti-popup">
+                <p className="sahiti-popup__name">Candidate store location</p>
+                <p className="sahiti-popup__line">
+                  {candidate.lat.toFixed(4)}, {candidate.lng.toFixed(4)}
+                </p>
+                <p className="sahiti-popup__source">
+                  Run “Check this spot” in the feasibility panel below.
+                </p>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ) : null}
 
         {/* Research zones: translucent, sized and coloured by opportunity score. */}
         {zones.map((place) => (

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIH PS 26091: ADYPU to Lohegaon Hyper-Local Business & Risk Intelligence</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: #111827;
+            --card-sub: #1f2937;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.25);
+            --ondc-blue: #2563eb;
+            --text-main: #f9fafb;
+            --text-dim: #9ca3af;
+            --border: #374151;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { display: flex; height: 100vh; background: var(--bg-dark); color: var(--text-main); overflow: hidden; }
+        
+        #sidebar { width: 440px; background: var(--card-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 1000; box-shadow: 6px 0 30px rgba(0,0,0,0.6); }
+        .header { padding: 18px 20px; border-bottom: 1px solid var(--border); background: #0b1120; }
+        .header h1 { font-size: 1.15rem; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+        .header p { font-size: 0.78rem; color: var(--text-dim); line-height: 1.35; }
+
+        .nav-tabs { display: flex; background: #0f172a; border-bottom: 1px solid var(--border); }
+        .tab-btn { flex: 1; padding: 10px 4px; background: none; border: none; color: var(--text-dim); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: 0.2s; text-align: center; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: #172554; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: #0d1527; }
+        .stat-card { background: var(--card-sub); padding: 8px 10px; border-radius: 6px; border: 1px solid #334155; }
+        .stat-val { font-size: 1.15rem; font-weight: 700; color: var(--text-main); }
+        .stat-lbl { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; }
+
+        .tab-content { flex: 1; overflow-y: auto; padding: 15px 18px; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        label { font-size: 0.72rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; display: block; margin-bottom: 6px; }
+        select, input, textarea { width: 100%; padding: 8px 12px; background: #090d16; border: 1px solid var(--border); border-radius: 6px; color: white; font-size: 0.82rem; outline: none; margin-bottom: 10px; }
+        select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+        .btn-action { width: 100%; padding: 9px; background: #0284c7; border: none; border-radius: 6px; color: white; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 10px; }
+        .btn-action:hover { background: #0369a1; }
+
+        .legend { padding: 8px 0 12px 0; display: flex; justify-content: space-between; font-size: 0.72rem; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+        .biz-card { background: #131c2e; border: 1px solid #283548; border-radius: 8px; padding: 12px; margin-bottom: 9px; cursor: pointer; transition: all 0.2s; }
+        .biz-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+        .biz-name { font-weight: 600; font-size: 0.88rem; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .biz-cat { font-size: 0.74rem; color: var(--accent); margin-bottom: 5px; }
+        .biz-rating { font-size: 0.72rem; color: #fbbf24; font-weight: 600; margin-bottom: 4px; }
+        .biz-meta { font-size: 0.7rem; color: var(--text-dim); display: flex; gap: 8px; flex-wrap: wrap; }
+        .risk-pill { font-size: 0.62rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+
+        #map { flex: 1; height: 100%; }
+
+        .popup-box { font-size: 0.82rem; line-height: 1.4; color: #0f172a; min-width: 250px; }
+        .popup-box h3 { font-size: 0.95rem; margin-bottom: 3px; color: #0f172a; }
+        .popup-box .pill { display: inline-block; padding: 2px 6px; border-radius: 4px; color: white; font-size: 0.65rem; font-weight: 700; margin: 4px 0 6px 0; }
+        .popup-box .scheme-box { background: #f0f9ff; border-left: 3px solid #0284c7; padding: 6px 8px; margin-top: 6px; border-radius: 4px; font-size: 0.74rem; }
+        .scheme-box strong { color: #0369a1; }
+
+        .advisory-box { background: #172554; border: 1px solid #1e40af; border-radius: 8px; padding: 12px; margin-top: 10px; font-size: 0.8rem; line-height: 1.45; }
+        .advisory-box h4 { color: #67e8f9; margin-bottom: 6px; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div class="header">
+            <h1>ADYPU &harr; Lohegaon Corridor</h1>
+            <p>Geospatial SME Competition, Risk Mapping &amp; Credit Matchmaker</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('stores-tab')"><i class="fa fa-store"></i> All Stores</button>
+            <button class="tab-btn" onclick="switchTab('risk-tab')"><i class="fa fa-chart-line"></i> Risk Simulator</button>
+            <button class="tab-btn" onclick="switchTab('ondc-tab')"><i class="fa fa-network-wired"></i> ONDC Network</button>
+            <button class="tab-btn" onclick="switchTab('ai-tab')"><i class="fa fa-robot"></i> Ask Maps AI</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-val" id="total-count">119</div>
+                <div class="stat-lbl">Active Stores</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-val" style="color: #10b981;" id="opp-count">58</div>
+                <div class="stat-lbl">Low Risk Zones</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-val" style="color: #38bdf8;" id="gmaps-count">16</div>
+                <div class="stat-lbl">G-Maps Verified</div>
+            </div>
+        </div>
+
+        <!-- TAB 1: ALL STORES -->
+        <div class="tab-content">
+            <div id="stores-tab" class="tab-panel active">
+                <label>Filter Commercial Category</label>
+                <select id="cat-select" onchange="renderMarkers()">
+                    <option value="ALL">All Commercial Categories (119)</option>
+                </select>
+
+                <label>Search Business Name or Street</label>
+                <input type="text" id="search-input" placeholder="e.g. Dmart, Kirana, Cafe, Medical..." oninput="renderMarkers()">
+
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#10b981"></span> Low Risk</div>
+                    <div class="legend-item"><span class="dot" style="background:#f59e0b"></span> Moderate</div>
+                    <div class="legend-item"><span class="dot" style="background:#ef4444"></span> High Risk</div>
+                </div>
+
+                <div id="business-list"></div>
+            </div>
+
+            <!-- TAB 2: RISK SIMULATOR -->
+            <div id="risk-tab" class="tab-panel">
+                <p style="font-size: 0.78rem; color: var(--text-dim); margin-bottom: 12px;">
+                    Click anywhere on the map or enter coordinates to calculate local competition density, saturation score, and loan eligibility for a new store.
+                </p>
+
+                <label>Candidate Latitude</label>
+                <input type="number" id="sim-lat" step="0.0001" value="18.6150">
+
+                <label>Candidate Longitude</label>
+                <input type="number" id="sim-lon" step="0.0001" value="73.9120">
+
+                <label>Proposed Store Type</label>
+                <select id="sim-type">
+                    <option value="Grocery & Daily Needs / Kirana">Grocery / Kirana Store</option>
+                    <option value="Food, Cafe & Eateries">Cafe & Quick Snacks</option>
+                    <option value="Pharmacy & Healthcare">Pharmacy / Chemist</option>
+                    <option value="Stationery, Xerox & Education Needs">Stationery & Xerox Center</option>
+                    <option value="Personal Care & Grooming">Salon & Grooming</option>
+                </select>
+
+                <label>Proposed Capital / Budget (INR)</label>
+                <select id="sim-budget">
+                    <option value="35000">₹35,000 (Micro / Tiny Stall)</option>
+                    <option value="200000" selected>₹2,00,000 (Standard Kirana / Cafe)</option>
+                    <option value="800000">₹8,00,000 (Mini Supermarket)</option>
+                    <option value="1500000">₹15,00,000 (Large Retail Setup)</option>
+                </select>
+
+                <button class="btn-action" onclick="runFeasibilitySimulation()"><i class="fa fa-calculator"></i> Calculate Feasibility &amp; Loans</button>
+
+                <div id="sim-result"></div>
+            </div>
+
+            <!-- TAB 3: ONDC NETWORK -->
+            <div id="ondc-tab" class="tab-panel">
+                <div style="background: #1e1b4b; border: 1px solid #4338ca; padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+                    <div style="font-weight: 700; font-size: 0.82rem; color: #a5b4fc; margin-bottom: 4px;">
+                        <i class="fa fa-network-wired"></i> ONDC Beckn Protocol Integration
+                    </div>
+                    <p style="font-size: 0.74rem; color: #c7d2fe; line-height: 1.4;">
+                        Empowering local kiranas to receive digital orders. Transaction footprints on ONDC enable collateral-free cashflow lending under OCEN!
+                    </p>
+                </div>
+
+                <label>Search ONDC Local Catalogue</label>
+                <input type="text" id="ondc-query" value="grocery" placeholder="e.g. grocery, snacks, dairy">
+
+                <button class="btn-action" style="background:#4f46e5" onclick="searchONDC()"><i class="fa fa-search"></i> Query Beckn BAP Sellers</button>
+
+                <div id="ondc-results"></div>
+            </div>
+
+            <!-- TAB 4: ASK MAPS AI -->
+            <div id="ai-tab" class="tab-panel">
+                <p style="font-size: 0.78rem; color: var(--text-dim); margin-bottom: 10px;">
+                    Natural language advisor powered by Gemini &amp; Geospatial Context (similar to Google Maps 'Ask Maps').
+                </p>
+
+                <label>Ask Any Feasibility Question</label>
+                <textarea id="ai-query" rows="3" placeholder="e.g. Should I start a juice and sandwich stall near ADYPU hostel gate? How much loan can I get?"></textarea>
+
+                <button class="btn-action" style="background:#0891b2" onclick="queryAskMapsAI()"><i class="fa fa-sparkles"></i> Consult AI Advisor</button>
+
+                <div id="ai-response"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let businesses = [];
+        let map;
+        let markers = [];
+        let simMarker = null;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        async function initDashboard() {
+            map = L.map('map').setView([18.6100, 73.9150], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors | SIH PS 26091'
+            }).addTo(map);
+
+            // Hub Markers
+            L.marker([18.6226, 73.9063]).addTo(map).bindPopup("<b>ADYPU Knowledge City</b><br>15,000+ Student Base");
+            L.marker([18.5955, 73.9268]).addTo(map).bindPopup("<b>Lohegaon Central Junction</b><br>Major Transit & Market Core");
+
+            // Map click listener for Simulator
+            map.on('click', function(e) {
+                document.getElementById('sim-lat').value = e.latlng.lat.toFixed(4);
+                document.getElementById('sim-lon').value = e.latlng.lng.toFixed(4);
+                if (simMarker) map.removeLayer(simMarker);
+                simMarker = L.circleMarker(e.latlng, { radius: 11, fillColor: '#38bdf8', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(map);
+                simMarker.bindPopup("<b>Candidate Store Location</b><br>Click 'Calculate Feasibility' in the Risk Simulator tab.").openPopup();
+            });
+
+            // Load Businesses
+            try {
+                const res = await fetch('http://127.0.0.1:8000/api/businesses?limit=200');
+                const data = await res.json();
+                businesses = data.results;
+            } catch (err) {
+                console.warn("Backend not reached over HTTP, loading local fallback...");
+            }
+
+            populateCategories();
+            renderMarkers();
+        }
+
+        function populateCategories() {
+            const categories = [...new Set(businesses.map(b => b.category))].filter(Boolean).sort();
+            const sel = document.getElementById('cat-select');
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.innerText = c;
+                sel.appendChild(opt);
+            });
+        }
+
+        function renderMarkers() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            const searchVal = document.getElementById('search-input').value.toLowerCase();
+            const selectedCat = document.getElementById('cat-select').value;
+            const listEl = document.getElementById('business-list');
+            listEl.innerHTML = '';
+
+            let shown = 0;
+            let opps = 0;
+            let gmaps = 0;
+
+            businesses.forEach(b => {
+                const matchesSearch = b.name.toLowerCase().includes(searchVal) || (b.street && b.street.toLowerCase().includes(searchVal));
+                const matchesCat = selectedCat === 'ALL' || b.category === selectedCat;
+
+                if (matchesSearch && matchesCat) {
+                    shown++;
+                    if (b.saturation_risk && b.saturation_risk.includes('LOW')) opps++;
+                    if (b.data_source && b.data_source.includes('Google')) gmaps++;
+
+                    const marker = L.circleMarker([b.lat, b.lon], {
+                        radius: 8,
+                        fillColor: b.risk_color || '#38bdf8',
+                        color: '#ffffff',
+                        weight: 1.5,
+                        opacity: 1,
+                        fillOpacity: 0.85
+                    }).addTo(map);
+
+                    const schemesHtml = (b.recommended_schemes || []).slice(0, 2).map(s => 
+                        `<div class="scheme-box">
+                            <strong>${s.name}</strong> (${s.max_amount})<br>
+                            <a href="${s.portal}" target="_blank" style="color:#0284c7; text-decoration:none; font-weight:700;">Apply via JanSamarth &rarr;</a>
+                         </div>`
+                    ).join('');
+
+                    const ratingHtml = b.rating ? `<div style="color:#d97706; font-weight:700; font-size:0.75rem; margin:2px 0;">⭐ ${b.rating} (${b.review_count || 0} reviews)</div>` : '';
+
+                    marker.bindPopup(`
+                        <div class="popup-box">
+                            <h3>${b.name}</h3>
+                            <div style="color: #64748b; font-size:0.72rem;">${b.category} &bull; ${b.data_source || 'OSM'}</div>
+                            ${ratingHtml}
+                            <span class="pill" style="background:${b.risk_color || '#38bdf8'}">${b.saturation_risk || 'ASSESSED'}</span>
+                            <p style="font-size:0.74rem; margin-bottom:4px;">${b.risk_description || ''}</p>
+                            <div style="font-size:0.68rem; color:#475569;">
+                                📍 ${b.dist_to_adypu_km} km to ADYPU | ${b.dist_to_lohegaon_km} km to Lohegaon
+                            </div>
+                            <hr style="margin: 6px 0; border: none; border-top: 1px solid #e2e8f0;">
+                            <div style="font-weight:700; font-size:0.72rem; color:#0f172a;">Matched Loan Schemes:</div>
+                            ${schemesHtml}
+                        </div>
+                    `);
+
+                    markers.push(marker);
+
+                    // Card in sidebar
+                    const card = document.createElement('div');
+                    card.className = 'biz-card';
+                    card.innerHTML = `
+                        <div class="biz-name">
+                            <span>${b.name}</span>
+                            <span class="risk-pill" style="background:${b.risk_color || '#38bdf8'}22; color:${b.risk_color || '#38bdf8'}; border:1px solid ${b.risk_color || '#38bdf8'}">${(b.saturation_risk || 'LOW').split(' ')[0]}</span>
+                        </div>
+                        <div class="biz-cat">${b.category}</div>
+                        ${b.rating ? `<div class="biz-rating"><i class="fa fa-star"></i> ${b.rating} (${b.review_count || 0} reviews) &bull; ${b.data_source || ''}</div>` : ''}
+                        <div class="biz-meta">
+                            <span>ADYPU: ${b.dist_to_adypu_km}km</span>
+                            <span>Lohegaon: ${b.dist_to_lohegaon_km}km</span>
+                            <span>400m Neighbors: ${b.competitors_within_400m || 0}</span>
+                        </div>
+                    `;
+                    card.onclick = () => {
+                        map.setView([b.lat, b.lon], 16);
+                        marker.openPopup();
+                    };
+                    listEl.appendChild(card);
+                }
+            });
+
+            document.getElementById('total-count').innerText = shown;
+            document.getElementById('opp-count').innerText = opps;
+            document.getElementById('gmaps-count').innerText = gmaps;
+        }
+
+        async function runFeasibilitySimulation() {
+            const lat = parseFloat(document.getElementById('sim-lat').value);
+            const lon = parseFloat(document.getElementById('sim-lon').value);
+            const btype = document.getElementById('sim-type').value;
+            const budget = parseFloat(document.getElementById('sim-budget').value);
+
+            const resBox = document.getElementById('sim-result');
+            resBox.innerHTML = '<div style="color:var(--accent); font-size:0.8rem;"><i class="fa fa-spinner fa-spin"></i> Calculating competition & loan eligibility...</div>';
+
+            try {
+                const res = await fetch('http://127.0.0.1:8000/api/risk-assessment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        lat: lat,
+                        lon: lon,
+                        business_type: btype,
+                        proposed_investment_inr: budget,
+                        radius_km: 0.5
+                    })
+                });
+                const data = await res.json();
+                
+                const compHtml = data.competition_metrics.nearest_competitors.map(c => 
+                    `<li><b>${c.name}</b> (${c.distance_meters}m away) ${c.rating !== 'N/A' ? `&bull; ⭐ ${c.rating}` : ''}</li>`
+                ).join('');
+
+                const loanHtml = data.financial_structuring.recommended_loan_schemes.map(l =>
+                    `<div class="scheme-box">
+                        <strong>${l.scheme}</strong>: ${l.limit}<br>
+                        <span>${l.features}</span>
+                     </div>`
+                ).join('');
+
+                resBox.innerHTML = `
+                    <div class="advisory-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <h4>Feasibility Assessment</h4>
+                            <span class="risk-pill" style="background:#ef4444; color:#fff;">Risk Score: ${data.feasibility_assessment.saturation_risk_score}/100</span>
+                        </div>
+                        <p><strong>Verdict:</strong> ${data.feasibility_assessment.verdict}</p>
+                        <p style="margin-top:4px;"><strong>Advice:</strong> ${data.feasibility_assessment.strategic_advice}</p>
+                        <hr style="margin:8px 0; border:none; border-top:1px solid #1e3a8a;">
+                        <div><strong>Competitors within 500m (${data.competition_metrics.direct_competitors_count}):</strong></div>
+                        <ul style="padding-left:16px; margin:4px 0; font-size:0.75rem;">${compHtml || '<li>None found within 500m! Great spot.</li>'}</ul>
+                        <hr style="margin:8px 0; border:none; border-top:1px solid #1e3a8a;">
+                        <div><strong>Recommended Credit Schemes:</strong></div>
+                        ${loanHtml}
+                    </div>
+                `;
+            } catch (e) {
+                resBox.innerHTML = '<div style="color:#ef4444;">Error contacting backend API. Ensure server is running on port 8000.</div>';
+            }
+        }
+
+        async function searchONDC() {
+            const query = document.getElementById('ondc-query').value;
+            const resBox = document.getElementById('ondc-results');
+            resBox.innerHTML = '<div style="color:#818cf8; font-size:0.8rem;"><i class="fa fa-spinner fa-spin"></i> Querying Beckn ONDC Network...</div>';
+
+            try {
+                const res = await fetch('http://127.0.0.1:8000/api/ondc/search', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        query_item: query,
+                        latitude: 18.6080,
+                        longitude: 73.9110
+                    })
+                });
+                const data = await res.json();
+                const sellers = data.message.catalog['bpp/providers'] || [];
+
+                resBox.innerHTML = sellers.map(s => {
+                    const p = s.provider;
+                    return `
+                        <div class="biz-card" style="border-left: 3px solid #4f46e5;">
+                            <div class="biz-name">
+                                <span>${p.descriptor.name}</span>
+                                <span class="badge-ondc">${s.bpp_id}</span>
+                            </div>
+                            <div class="biz-cat">${p.descriptor.short_desc}</div>
+                            <div style="font-size:0.72rem; color:#a5b4fc;">📍 ${p.location.address} &bull; Delivery: ${p.fulfillments[0].time}</div>
+                            <div style="margin-top:6px; font-size:0.72rem;">
+                                <strong>Live Catalogue Sample:</strong>
+                                ${p.items.map(i => `<span style="background:#1e1b4b; padding:2px 6px; border-radius:4px; margin-right:4px;">${i.name}: ₹${i.price.value}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                resBox.innerHTML = '<div style="color:#ef4444;">Error connecting to ONDC backend module.</div>';
+            }
+        }
+
+        async function queryAskMapsAI() {
+            const q = document.getElementById('ai-query').value;
+            if (!q) return;
+
+            const resBox = document.getElementById('ai-response');
+            resBox.innerHTML = '<div style="color:#22d3ee; font-size:0.8rem;"><i class="fa fa-spinner fa-spin"></i> Consulting Ask Maps AI Advisor...</div>';
+
+            try {
+                const res = await fetch('http://127.0.0.1:8000/api/ask-maps-advisor', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: q})
+                });
+                const data = await res.json();
+
+                resBox.innerHTML = `
+                    <div class="advisory-box" style="background:#083344; border-color:#0e7490;">
+                        <h4 style="color:#22d3ee;"><i class="fa fa-sparkles"></i> AI Corridor Advisory</h4>
+                        <p><strong>Feasibility:</strong> ${data.feasibility || 'VIABLE'}</p>
+                        <p style="margin-top:4px;">${data.competitor_summary || data.general_advice || ''}</p>
+                        ${data.recommended_scheme ? `
+                            <div class="scheme-box" style="background:#164e63; border-color:#06b6d4; color:#e0f2fe; margin-top:8px;">
+                                <strong>${data.recommended_scheme.name}</strong> (${data.recommended_scheme.amount})<br>
+                                <a href="${data.recommended_scheme.portal}" target="_blank" style="color:#67e8f9; font-weight:700;">Apply on Official Portal &rarr;</a>
+                            </div>
+                        ` : ''}
+                        ${data.digital_boost ? `<p style="margin-top:6px; font-size:0.75rem; color:#67e8f9;"><i class="fa fa-bolt"></i> <strong>Digital Strategy:</strong> ${data.digital_boost}</p>` : ''}
+                    </div>
+                `;
+            } catch (e) {
+                resBox.innerHTML = '<div style="color:#ef4444;">Error querying AI Advisor. Ensure backend is running.</div>';
+            }
+        }
+
+        window.onload = initDashboard;
+    </script>
+</body>
+</html>

@@ -1,20 +1,32 @@
 // Real businesses in and around Lohegaon, Pune.
 //
-// Source: OpenStreetMap, retrieved 2026-09-20 through the Overpass API.
+// Source A: OpenStreetMap curated listings (Overpass, 2026-09-20).
 // (c) OpenStreetMap contributors, licensed under the ODbL.
 //
-// These are factual listings only. Names, addresses, coordinates and opening
-// hours are copied from OpenStreetMap and are NOT scored, ranked or endorsed by
-// Sahiti. Nothing here is Sahiti research or a market recommendation.
+// Source B: ADYPU → Lohegaon corridor dataset in
+// adypu_lohegaon_businesses.json (SIH PS 26091 gather), merged below.
 //
-// Coverage is honest about its limits. OpenStreetMap has rich coverage of the
-// Lohegaon market belt but almost none of the ADYPU / Pride World City campus
-// belt, so that locality holds a single record. Google Maps covers it better;
-// src/lib/googleMaps.ts builds the deep links that hand a shop over to Google.
+// These are factual listings only. Names, addresses and coordinates are NOT
+// scored as investment advice by Sahiti unless a corridor risk note is shown.
 //
 // Kept in a local file for now. Move to Supabase when hosting.
 
-export type ShopCategory = "Hardware" | "General store" | "Salon" | "Garage";
+import { corridorBusinessesToShops, mergeShopLists } from "./corridorBusinesses";
+
+export type ShopCategory =
+  | "Hardware"
+  | "General store"
+  | "Salon"
+  | "Garage"
+  | "Pharmacy"
+  | "Food"
+  | "Bakery"
+  | "Apparel"
+  | "Banking"
+  | "Gifts"
+  | "Stationery"
+  | "Retail"
+  | "Mall";
 
 /** Coarse neighbourhood label, used to group and filter the map. */
 export type ShopLocality =
@@ -30,6 +42,8 @@ export type ShopLocality =
 
 /** Payment methods OpenStreetMap records for a shop. */
 export type ShopPayment = "Cash" | "Cards" | "Debit cards" | "Google Pay" | "UPI apps";
+
+export type ShopRiskLevel = "low" | "moderate" | "high";
 
 export type Shop = {
   id: string;
@@ -55,6 +69,27 @@ export type Shop = {
   osmRef?: string;
   /** Date an OpenStreetMap volunteer last surveyed this record. */
   surveyed?: string;
+  /** Where this row came from after the corridor merge. */
+  source?: "osm-curated" | "adypu-corridor";
+  riskLevel?: ShopRiskLevel;
+  riskDescription?: string;
+  competitorsNearby?: number;
+  recommendedSchemes?: Array<{ name: string; maxAmount?: string; portal?: string }>;
+  /** Google-sourced star rating, where the SIH gather recorded one. */
+  rating?: number;
+  reviewCount?: number;
+  /**
+   * Corridor analytics from the SIH PS 26091 gather: distances to the two
+   * corridor anchors, 400 m commercial density and the computed risk colour.
+   */
+  corridor?: {
+    zone?: string;
+    distToAdypuKm?: number;
+    distToLohegaonKm?: number;
+    density400m?: number;
+    riskColor?: string;
+    dataSource?: string;
+  };
 };
 
 export const SHOP_CATEGORIES = [
@@ -62,6 +97,15 @@ export const SHOP_CATEGORIES = [
   "General store",
   "Salon",
   "Garage",
+  "Pharmacy",
+  "Food",
+  "Bakery",
+  "Apparel",
+  "Banking",
+  "Gifts",
+  "Stationery",
+  "Retail",
+  "Mall",
 ] as const satisfies readonly ShopCategory[];
 
 export const SHOP_CATEGORY_COLORS: Record<ShopCategory, string> = {
@@ -69,6 +113,15 @@ export const SHOP_CATEGORY_COLORS: Record<ShopCategory, string> = {
   "General store": "#15803D",
   Salon: "#A21CAF",
   Garage: "#0369A1",
+  Pharmacy: "#0F766E",
+  Food: "#C2410C",
+  Bakery: "#B45309",
+  Apparel: "#BE185D",
+  Banking: "#1D4ED8",
+  Gifts: "#7C3AED",
+  Stationery: "#475569",
+  Retail: "#334155",
+  Mall: "#0F172A",
 };
 
 /** Display order for the locality filters. */
@@ -114,7 +167,7 @@ export const OSM_SHOP_TAG_CATEGORY: Record<string, ShopCategory> = {
   car: "Garage",
 };
 
-export const SHOPS: Shop[] = [
+export const OSM_SHOPS: Shop[] = [
 
   // ---- Hardware ----
   {
@@ -1148,12 +1201,16 @@ export function formatShopCoordinates(shop: Shop): string {
 
 /** How many shops sit in each category. Drives the filter chip counts. */
 export function countByCategory(shops: Shop[]): Record<ShopCategory, number> {
-  const counts: Record<ShopCategory, number> = {
-    Hardware: 0,
-    "General store": 0,
-    Salon: 0,
-    Garage: 0,
-  };
+  const counts = Object.fromEntries(SHOP_CATEGORIES.map((category) => [category, 0])) as Record<
+    ShopCategory,
+    number
+  >;
   for (const shop of shops) counts[shop.category] += 1;
   return counts;
 }
+
+/** Curated OSM belt plus the ADYPU–Lohegaon corridor gather, deduped by OSM id / coordinate. */
+export const SHOPS: Shop[] = mergeShopLists(
+  OSM_SHOPS.map((shop) => ({ ...shop, source: "osm-curated" as const })),
+  corridorBusinessesToShops(),
+);

@@ -39,6 +39,48 @@ const LAYERS: Array<{ value: Layer; label: string }> = [
 const AREA_CENTER = { lat: 18.585, lng: 73.925 };
 const AREA_ZOOM = 13;
 
+/** Stat cards above the filters, as on the SIH dashboard. */
+function StatsRow({ total, low, verified }: { total: number; low: number; verified: number }) {
+  const cards = [
+    { label: "Active stores", value: total, color: undefined },
+    { label: "Low-risk pockets", value: low, color: "#10b981" },
+    { label: "Google verified", value: verified, color: "#38bdf8" },
+  ];
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {cards.map((card) => (
+        <div key={card.label} className="rounded-md border p-3">
+          <p className="text-lg font-semibold" style={card.color ? { color: card.color } : undefined}>
+            {card.value}
+          </p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{card.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Risk legend matching the SIH corridor colouring. */
+function RiskLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <span className="font-medium">Pin colour:</span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: "#10b981" }} />
+        Low risk (opportunity)
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: "#f59e0b" }} />
+        Moderate
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: "#ef4444" }} />
+        High risk (saturated)
+      </span>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/_authenticated/heatmap")({
   head: () => ({
     meta: [
@@ -62,7 +104,7 @@ export const Route = createFileRoute("/_authenticated/heatmap")({
 });
 
 /** One shop card. Real OpenStreetMap fields only; nothing is inferred. */
-function ShopCard({ shop }: { shop: Shop }) {
+function ShopCard({ shop, onFocus }: { shop: Shop; onFocus?: (shop: Shop) => void }) {
   const meta = [
     shop.openingHours,
     shop.payments && shop.payments.length > 0 ? shop.payments.join(", ") : null,
@@ -79,14 +121,31 @@ function ShopCard({ shop }: { shop: Shop }) {
         </div>
         <span
           className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-white"
-          style={{ background: SHOP_CATEGORY_COLORS[shop.category] }}
+          style={{ background: shop.corridor?.riskColor ?? SHOP_CATEGORY_COLORS[shop.category] }}
         >
-          {shop.category}
+          {shop.riskLevel === "low" ? "Low risk" : shop.riskLevel === "high" ? "High risk" : shop.riskLevel === "moderate" ? "Moderate" : shop.category}
         </span>
       </div>
 
+      {shop.rating !== undefined ? (
+        <p className="mt-1.5 text-xs font-medium text-amber-600">
+          ★ {shop.rating.toFixed(1)}
+          {shop.reviewCount !== undefined ? ` (${shop.reviewCount} reviews)` : ""}
+        </p>
+      ) : null}
+
       <p className="mt-2 text-xs font-medium text-muted-foreground">{shop.locality}</p>
       <p className="mt-1 text-sm text-muted-foreground">{formatShopAddress(shop)}</p>
+
+      {shop.riskDescription ? (
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">{shop.riskDescription}</p>
+      ) : null}
+
+      {shop.recommendedSchemes && shop.recommendedSchemes.length > 0 ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Schemes: {shop.recommendedSchemes.slice(0, 2).map((scheme) => scheme.name).join(", ")}
+        </p>
+      ) : null}
 
       {meta.length > 0 ? (
         <p className="mt-2 text-xs text-muted-foreground">{meta.join(" · ")}</p>
@@ -102,6 +161,15 @@ function ShopCard({ shop }: { shop: Shop }) {
       ) : null}
 
       <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-3 text-xs font-medium">
+        {onFocus ? (
+          <button
+            type="button"
+            onClick={() => onFocus(shop)}
+            className="text-primary underline underline-offset-2"
+          >
+            Show on map
+          </button>
+        ) : null}
         <a
           href={shopGoogleMapsUrl(shop)}
           target="_blank"
@@ -139,8 +207,14 @@ function Heatmap() {
   const [zoneFilter, setZoneFilter] = useState("All");
   const [localityFilter, setLocalityFilter] = useState<"All" | ShopLocality>("All");
   const [categoryFilter, setCategoryFilter] = useState<"All" | ShopCategory>("All");
+  const [search, setSearch] = useState("");
   const [focusToken, setFocusToken] = useState(0);
   const [areaFocusToken, setAreaFocusToken] = useState(0);
+  // Feasibility simulator state (ported from the SIH dashboard's Risk Simulator tab).
+  const [candidate, setCandidate] = useState<{ lat: number; lng: number } | null>(null);
+  const [simType, setSimType] = useState<string>(SIMULATOR_BUSINESS_TYPES[0]);
+  const [simBudget, setSimBudget] = useState(200000);
+  const [simResult, setSimResult] = useState<FeasibilityResult | null>(null);
   const geo = useGeolocation();
 
   // Each fresh fix recentres the map exactly once, so panning afterwards sticks.
@@ -193,9 +267,21 @@ function Heatmap() {
       SHOPS.filter(
         (shop) =>
           (localityFilter === "All" || shop.locality === localityFilter) &&
-          (categoryFilter === "All" || shop.category === categoryFilter),
+          (categoryFilter === "All" || shop.category === categoryFilter) &&
+          (search.trim() === "" ||
+            shop.name.toLowerCase().includes(search.trim().toLowerCase()) ||
+            (shop.street ?? "").toLowerCase().includes(search.trim().toLowerCase())),
       ),
-    [localityFilter, categoryFilter],
+    [localityFilter, categoryFilter, search],
+  );
+
+  const corridorStats = useMemo(
+    () => ({
+      total: SHOPS.length,
+      lowRisk: SHOPS.filter((shop) => shop.riskLevel === "low").length,
+      googleVerified: SHOPS.filter((shop) => shop.rating !== undefined).length,
+    }),
+    [],
   );
 
   const focus = useMemo(
@@ -255,8 +341,18 @@ function Heatmap() {
     <>
       <PageHeader
         title="Lohegaon shops and risk map"
-        description="Hardware stores, general stores, salons and garages around Lohegaon, with Sahiti research zones alongside. Shop pins are factual OpenStreetMap locations."
+        description="Hardware, kirana, food, pharmacy and more across the ADYPU–Lohegaon corridor, with Sahiti research zones alongside. Pins combine curated OpenStreetMap listings and the SIH corridor gather, colour-coded by competition risk."
       />
+
+      {showShops && (
+        <div className="mb-5">
+          <StatsRow
+            total={corridorStats.total}
+            low={corridorStats.lowRisk}
+            verified={corridorStats.googleVerified}
+          />
+        </div>
+      )}
 
       <div className="mb-5 space-y-4">
         <div
@@ -400,6 +496,16 @@ function Heatmap() {
               focusToken={focusToken}
               areaFocus={focus}
               areaFocusToken={areaFocusToken}
+              candidate={showShops ? candidate : null}
+              onMapClick={
+                showShops
+                  ? (lat, lng) => {
+                      setCandidate({ lat, lng });
+                      setSimResult(null);
+                    }
+                  : undefined
+              }
+              showHubs={showShops}
             />
           </Suspense>
         </ClientOnly>
@@ -418,7 +524,15 @@ function Heatmap() {
                 {category}
               </li>
             ))}
-            <li>Circles with a number group nearby shops. Click one to zoom in.</li>
+        {showShops && (
+          <>
+            <RiskLegend />
+            <p className="text-xs text-muted-foreground">
+              Circles with a number group nearby shops. Click one to zoom in. Click empty map to
+              place a candidate pin for the feasibility check below.
+            </p>
+          </>
+        )}
           </ul>
         )}
         {showZones && (
@@ -439,14 +553,26 @@ function Heatmap() {
           </h2>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            OpenStreetMap maps Lohegaon in detail but the ADYPU and Pride World City belt barely at
-            all, so that stretch holds a single record. Open any listing in Google Maps for
-            reviews, photos and the current phone number.
+            OpenStreetMap maps Lohegaon in detail. The ADYPU–Lohegaon corridor gather adds
+            pharmacies, food, kirana, banking and other trades with competition notes, ratings and
+            distances to the two corridor anchors. Open any listing in Google Maps for reviews,
+            photos and the current phone number.
           </p>
 
           <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {visibleShops.map((shop) => (
-              <ShopCard key={shop.id} shop={shop} />
+              <ShopCard
+                key={shop.id}
+                shop={shop}
+                onFocus={(target) => {
+                  setLocalityFilter("All");
+                  setAreaFocusToken((value) => value + 1);
+                  // Recentre on the shop, then open its popup via the map.
+                  window.setTimeout(() => {
+                    setAreaFocus({ lat: target.lat, lng: target.lng, zoom: 17 });
+                  }, 0);
+                }}
+              />
             ))}
           </div>
 

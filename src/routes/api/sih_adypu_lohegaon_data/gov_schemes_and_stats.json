@@ -1,0 +1,141 @@
+{
+  "project_metadata": {
+    "sih_problem_statement": "PS 26091",
+    "title": "AI-Driven Hyper-Local Business Advisory and Financial Structuring Assistant for Rural / Semi-Urban Micro-Entrepreneurs",
+    "target_ministry": "Ministry of Social Justice and Empowerment (MoSJE) & Ministry of MSME",
+    "pilot_corridor": "ADYPU (Ajeenkya DY Patil University, Charholi) to Lohegaon Central, Pune, Maharashtra",
+    "last_updated": "2026-09-18"
+  },
+  "government_micro_finance_schemes": [
+    {
+      "scheme_code": "PM_SVANIDHI",
+      "scheme_name": "PM Street Vendor's AtmaNirbhar Nidhi (PM SVANidhi)",
+      "nodal_ministry": "Ministry of Housing and Urban Affairs (MoHUA)",
+      "official_portal": "https://pmsvanidhi.mohua.gov.in/",
+      "target_beneficiaries": "Urban and peri-urban street vendors, hawkers, small roadside kiosk owners",
+      "loan_slabs": [
+        {
+          "tranche": "1st Term Loan",
+          "max_limit": "₹10,000 - ₹15,000",
+          "tenure": "1 Year",
+          "national_disbursed_loans": 7938392,
+          "national_disbursed_amount_cr": 8425
+        },
+        {
+          "tranche": "2nd Term Loan",
+          "max_limit": "Up to ₹25,000",
+          "tenure": "18 Months",
+          "qualification": "Timely repayment of 1st Term Loan",
+          "national_disbursed_loans": 3051130,
+          "national_disbursed_amount_cr": 6381
+        },
+        {
+          "tranche": "3rd Term Loan",
+          "max_limit": "Up to ₹50,000",
+          "tenure": "36 Months",
+          "qualification": "Timely repayment of 2nd Term Loan",
+          "national_disbursed_loans": 932402,
+          "national_disbursed_amount_cr": 4628
+        }
+      ],
+      "key_incentives": {
+        "interest_subsidy": "7% per annum credited quarterly to bank account",
+        "digital_incentive": "Monthly cash-back of ₹50 to ₹100 on digital transactions (up to ₹1,200/year)",
+        "credit_card": "PM SVANidhi Credit Card facility for working capital after 2nd tranche repayment",
+        "ulb_transfer": "Vendor mobility enabled for migration between municipal jurisdictions"
+      },
+      "live_macro_stats": {
+        "eligible_applications": 14251934,
+        "sanctioned_loans": 12167249,
+        "disbursed_loans": 11921924,
+        "total_disbursed_amount_cr": 19435,
+        "loans_repaid": 6456136
+      }
+    },
+    {
+      "scheme_code": "PMMY_MUDRA",
+      "scheme_name": "Pradhan Mantri MUDRA Yojana (PMMY)",
+      "nodal_agency": "Micro Units Development & Refinance Agency Ltd. (MUDRA)",
+      "official_portal": "https://www.mudra.org.in/",
+      "target_beneficiaries": "Non-Corporate, Non-Farm Small/Micro Enterprises",
+      "tiers": [
+        {
+          "tier_name": "Shishu",
+          "loan_range": "Up to ₹50,000",
+          "target_stage": "Early startup, tiny retail, street stalls, entry-level kirana",
+          "collateral": "Zero collateral required"
+        },
+        {
+          "tier_name": "Kishore",
+          "loan_range": "₹50,000 to ₹5,00,000",
+          "target_stage": "Shop establishment, inventory buildup, POS machine, refrigeration",
+          "collateral": "Covered under CGFMU (Credit Guarantee Fund for Micro Units)"
+        },
+        {
+          "tier_name": "Tarun",
+          "loan_range": "₹5,00,000 to ₹10,00,000",
+          "target_stage": "Retail expansion, bakery machinery, mini-supermarket setups",
+          "collateral": "Covered under CGFMU"
+        },
+        {
+          "tier_name": "Tarun Plus",
+          "loan_range": "₹10,00,000 to ₹20,00,000",
+          "target_stage": "Enhanced limit for entrepreneurs who have repaid Tarun loans successfully",
+          "collateral": "Credit guarantee supported"
+        }
+      ],
+      "eligible_activities_in_adypu_lohegaon": [
+        "Traders and Shopkeepers: Kirana, departmental stores, milk booths",
+        "Food Products: Small eateries, tea/coffee cafes, bakeries, sweet shops",
+        "Personal & Community Services: Xerox & DTP centers, salons, motorcycle & cycle garages, tailors, medical stores"
+      ],
+      "working_capital_tool": "MUDRA Card (Pre-activated RuPay debit card linked to loan account)"
+    },
+    {
+      "scheme_code": "MOSJE_TARGETED",
+      "scheme_name": "National Backward Classes & SC Finance Corporations (NBCFDC / NSFDC)",
+      "nodal_ministry": "Ministry of Social Justice and Empowerment (MoSJE)",
+      "official_portals": [
+        "https://www.nbcfdc.gov.in/",
+        "https://nsfdc.nic.in/"
+      ],
+      "target_beneficiaries": "Micro-entrepreneurs from Backward Classes, Scheduled Castes, de-notified and nomadic tribes",
+      "loan_schemes": [
+        {
+          "name": "Micro-Finance Scheme",
+          "max_limit": "Up to ₹1,00,000 per beneficiary",
+          "interest_rate": "Concessional 5% per annum",
+          "delivery_channel": "State Channelizing Agencies (SCAs) and Regional Rural Banks"
+        },
+        {
+          "name": "General Term Loan Scheme",
+          "max_limit": "Up to ₹5,00,000 to ₹15,00,000",
+          "interest_rate": "6% to 8% per annum",
+          "purpose": "Setting up sustainable self-employment ventures in services and small retail"
+        }
+      ]
+    },
+    {
+      "scheme_code": "JANSAMARTH",
+      "scheme_name": "JanSamarth National Credit Portal",
+      "nodal_agency": "Government of India (Supported by SIDBI)",
+      "official_portal": "https://www.jansamarth.in/",
+      "capabilities": [
+        "Single-window digital eligibility check for 13 credit-linked Government schemes",
+        "Instant digital in-principle approval from 125+ partner banks and NBFCs",
+        "Integration with UIDAI Aadhaar, PAN verification, and GSTN for paperless processing"
+      ]
+    }
+  ],
+  "local_banking_infrastructure": {
+    "lead_bank_pune_district": "Bank of Maharashtra (Head Office: Lokmangal, 1501, Shivajinagar, Pune)",
+    "role": "Convener of SLBC Maharashtra and manager of District Annual Credit Plan (ACP)",
+    "local_financial_access_points_adypu_lohegaon": [
+      "Bank of Maharashtra - Lohegaon Branch & ATMs",
+      "State Bank of India (SBI) - Dhanori / Lohegaon Road Branches",
+      "HDFC Bank & ICICI Bank - Porwal Road / Lohegaon branches",
+      "Pune District Central Co-operative (PDCC) Bank - Agricultural and rural credit",
+      "Common Service Centers (CSC) / Banking Correspondents (BC) in Charholi Budruk"
+    ]
+  }
+}

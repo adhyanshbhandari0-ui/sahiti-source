@@ -40,7 +40,7 @@ const FIELD_MASK = [
 ].join(",");
 
 /** Every type we ever ask for, used when no category filter is supplied. */
-const ALL_TYPES = Object.values(GOOGLE_PLACE_TYPES).flat();
+const ALL_TYPES = Object.values(GOOGLE_PLACE_TYPES).flatMap((types) => types ?? []);
 
 /**
  * Requests are clamped to the region this app actually covers. That keeps a

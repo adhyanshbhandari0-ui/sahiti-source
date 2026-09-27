@@ -1,0 +1,38 @@
+{
+  "corridor": "ADYPU (Charholi) to Lohegaon Central",
+  "total_businesses": 119,
+  "data_sources": [
+    "OpenStreetMap (Overpass API)",
+    "Google Maps (Live Scraped)",
+    "Mappls (MapmyIndia Verified)"
+  ],
+  "category_breakdown": {
+    "Pharmacy & Healthcare": 21,
+    "Banking & Financial Services": 11,
+    "Grocery & Daily Needs / Kirana": 18,
+    "Food, Cafe & Eateries": 25,
+    "Electronics, Mobile & Hardware": 4,
+    "Apparel, Tailoring & Footwear": 8,
+    "Gifts, Jewelry & Home Goods": 11,
+    "Bakery & Sweets": 6,
+    "Auto Repair & Garage": 3,
+    "Stationery, Xerox & Education Needs": 4,
+    "General Retail & Services": 7,
+    "Shopping Center & Complex": 1
+  },
+  "risk_breakdown": {
+    "LOW_RISK_HIGH_OPPORTUNITY": 50,
+    "MODERATE_COMPETITION": 44,
+    "HIGH_RISK_SATURATED": 25
+  },
+  "key_hubs": {
+    "ADYPU_Knowledge_City": {
+      "lat": 18.6226,
+      "lon": 73.9063
+    },
+    "Lohegaon_Junction": {
+      "lat": 18.5955,
+      "lon": 73.9268
+    }
+  }
+}
