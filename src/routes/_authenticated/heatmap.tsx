@@ -22,7 +22,7 @@ import {
   shopGoogleMapsUrl,
   type GoogleShop,
 } from "@/lib/googleMaps";
-import { SIMULATOR_BUSINESS_TYPES, type FeasibilityResult } from "@/lib/feasibility";
+import { rateLocation, type SwotRating } from "@/lib/sahitiRating";
 import { focusForShops, type ShopFocus } from "@/lib/shopClusters";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -54,23 +54,20 @@ function StatsRow({
   low,
   moderate,
   high,
-  verified,
 }: {
   total: number;
   low: number;
   moderate: number;
   high: number;
-  verified: number;
 }) {
   const cards = [
     { label: "Active stores", value: total, color: undefined },
     { label: "Low risk", value: low, color: "#10b981" },
     { label: "Moderate", value: moderate, color: "#f59e0b" },
     { label: "High risk", value: high, color: "#ef4444" },
-    { label: "Google verified", value: verified, color: "#38bdf8" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {cards.map((card) => (
         <div key={card.label} className="rounded-md border p-3">
           <p
@@ -83,6 +80,173 @@ function StatsRow({
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * One S.W.O.T. row: the letter, what it measured, and the 0-10 it scored.
+ */
+function SwotRow({
+  letter,
+  label,
+  note,
+  value,
+}: {
+  letter: string;
+  label: string;
+  note: string;
+  value: number;
+}) {
+  const color = value >= 7 ? "#10b981" : value >= 5 ? "#f59e0b" : "#ef4444";
+  return (
+    <div className="flex items-center gap-3 py-1.5">
+      <span
+        aria-hidden="true"
+        className="flex size-7 shrink-0 items-center justify-center rounded-sm text-sm font-bold text-white"
+        style={{ background: color }}
+      >
+        {letter}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">
+          {label} <span className="font-normal text-muted-foreground">· {note}</span>
+        </p>
+      </div>
+      <span className="shrink-0 tabular-nums text-sm font-semibold" style={{ color }}>
+        {value}/10
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The Sahiti Rating read-out: overall score first, then the four S.W.O.T.
+ * parts that built it. Used for both a picked spot and a single shop.
+ */
+export function RatingCard({
+  rating,
+  title,
+  subtitle,
+}: {
+  rating: SwotRating;
+  title: string;
+  subtitle: string;
+}) {
+  const overallColor = rating.score >= 7 ? "#10b981" : rating.score >= 5 ? "#f59e0b" : "#ef4444";
+  return (
+    <div className="sahiti-panel p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-display text-lg font-semibold">{title}</h3>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+        <div className="text-right">
+          <p
+            className="font-display text-4xl font-semibold tabular-nums"
+            style={{ color: overallColor }}
+          >
+            {rating.score.toFixed(1)}
+            <span className="text-base text-muted-foreground">/10</span>
+          </p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Sahiti Rating</p>
+        </div>
+      </div>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        Based on S.W.O.T. overall — the four parts below are averaged into the score.
+      </p>
+
+      <div className="mt-3 divide-y">
+        <SwotRow letter="S" label="Strength" note={rating.footfall} value={rating.strength} />
+        <SwotRow
+          letter="W"
+          label="Weakness"
+          note={`${rating.rivals} same-trade shops within 500 m`}
+          value={rating.weakness}
+        />
+        <SwotRow
+          letter="O"
+          label="Opportunity"
+          note={`${rating.streetActivity} shops around — ${rating.streetActivity < 8 ? "room to grow" : "busy street"}`}
+          value={rating.opportunity}
+        />
+        <SwotRow
+          letter="T"
+          label="Threats"
+          note={
+            rating.nearestRival
+              ? `Nearest rival: ${rating.nearestRival.name}, ${rating.nearestRival.distanceMeters} m away`
+              : "No same-trade rival nearby"
+          }
+          value={rating.threats}
+        />
+      </div>
+
+      <p className="mt-3 text-sm font-medium">{rating.verdict}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{rating.advice}</p>
+    </div>
+  );
+}
+
+/**
+ * The pick-a-spot rating block under the map: category picker, run button,
+ * and the rating once a spot has been rated.
+ */
+function SahitiRatingPanel({
+  candidate,
+  rating,
+  ratingCategory,
+  onCategoryChange,
+  onRate,
+}: {
+  candidate: { lat: number; lng: number } | null;
+  rating: SwotRating | null;
+  ratingCategory: string;
+  onCategoryChange: (category: string) => void;
+  onRate: () => void;
+}) {
+  return (
+    <section aria-label="Sahiti rating" className="mt-6">
+      <div className="sahiti-panel flex flex-wrap items-end gap-3 p-5">
+        <div className="min-w-0">
+          <h3 className="font-display text-lg font-semibold">Sahiti Rating</h3>
+          <p className="text-sm text-muted-foreground">
+            Click a spot on the map, pick a shop type, and see its potential out of 10 — rated on
+            S.W.O.T. overall.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="rating-category">
+            Shop type
+          </label>
+          <select
+            id="rating-category"
+            value={ratingCategory}
+            onChange={(event) => onCategoryChange(event.target.value)}
+            className="rounded-md border bg-background px-2 py-1.5 text-sm"
+          >
+            {SHOP_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <Button size="sm" disabled={!candidate} onClick={onRate}>
+            {candidate ? "Rate this spot" : "Click the map first"}
+          </Button>
+        </div>
+      </div>
+
+      {rating ? (
+        <div className="mt-4">
+          <RatingCard
+            rating={rating}
+            title={`Opening a ${ratingCategory.toLowerCase()} here`}
+            subtitle={`${candidate!.lat.toFixed(4)}, ${candidate!.lng.toFixed(4)}`}
+          />
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -142,7 +306,17 @@ export const Route = createFileRoute("/_authenticated/heatmap")({
 });
 
 /** One shop card. Real OpenStreetMap fields only; nothing is inferred. */
-function ShopCard({ shop, onFocus }: { shop: Shop; onFocus?: (shop: Shop) => void }) {
+function ShopCard({
+  shop,
+  onFocus,
+  onRate,
+  rated,
+}: {
+  shop: Shop;
+  onFocus?: (shop: Shop) => void;
+  onRate?: (shop: Shop) => void;
+  rated?: SwotRating | null;
+}) {
   const meta = [
     shop.openingHours,
     shop.payments && shop.payments.length > 0 ? shop.payments.join(", ") : null,
@@ -206,6 +380,24 @@ function ShopCard({ shop, onFocus }: { shop: Shop; onFocus?: (shop: Shop) => voi
         </a>
       ) : null}
 
+      {rated ? (
+        <div className="mt-3 rounded-md border bg-secondary/60 p-3">
+          <p
+            className="text-sm font-semibold"
+            style={{
+              color: rated.score >= 7 ? "#10b981" : rated.score >= 5 ? "#f59e0b" : "#ef4444",
+            }}
+          >
+            Sahiti Rating: {rated.score.toFixed(1)}/10
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            S.W.O.T. — S {rated.strength}/10 · W {rated.weakness}/10 · O {rated.opportunity}/10 · T{" "}
+            {rated.threats}/10
+          </p>
+          <p className="mt-1 text-xs">{rated.verdict}</p>
+        </div>
+      ) : null}
+
       <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-3 text-xs font-medium">
         {onFocus ? (
           <button
@@ -214,6 +406,15 @@ function ShopCard({ shop, onFocus }: { shop: Shop; onFocus?: (shop: Shop) => voi
             className="text-primary underline underline-offset-2"
           >
             Show on map
+          </button>
+        ) : null}
+        {onRate ? (
+          <button
+            type="button"
+            onClick={() => onRate(shop)}
+            className="text-primary underline underline-offset-2"
+          >
+            Sahiti Rating
           </button>
         ) : null}
         <a
@@ -258,11 +459,11 @@ function Heatmap() {
   const [focusToken, setFocusToken] = useState(0);
   const [areaFocus, setAreaFocus] = useState<ShopFocus | null>(null);
   const [areaFocusToken, setAreaFocusToken] = useState(0);
-  // Feasibility simulator state (ported from the SIH dashboard's Risk Simulator tab).
+  // Sahiti Rating: pick a spot on the map, choose a trade, read the S.W.O.T. score.
   const [candidate, setCandidate] = useState<{ lat: number; lng: number } | null>(null);
-  const [simType, setSimType] = useState<string>(SIMULATOR_BUSINESS_TYPES[0]);
-  const [simBudget, setSimBudget] = useState(200000);
-  const [simResult, setSimResult] = useState<FeasibilityResult | null>(null);
+  const [ratingCategory, setRatingCategory] = useState<string>("General store");
+  const [rating, setRating] = useState<SwotRating | null>(null);
+  const [shopRating, setShopRating] = useState<{ shop: Shop; rating: SwotRating } | null>(null);
   const geo = useGeolocation();
 
   // Each fresh fix recentres the map exactly once, so panning afterwards sticks.
@@ -330,7 +531,6 @@ function Heatmap() {
     return {
       total: SHOPS.length,
       lowRisk: SHOPS.filter((shop) => shop.riskLevel === "low").length,
-      googleVerified: SHOPS.filter((shop) => shop.rating !== undefined).length,
       moderate,
       high,
     };
@@ -403,7 +603,6 @@ function Heatmap() {
             low={corridorStats.lowRisk}
             moderate={corridorStats.moderate}
             high={corridorStats.high}
-            verified={corridorStats.googleVerified}
           />
         </div>
       )}
@@ -594,7 +793,8 @@ function Heatmap() {
                 ? {
                     onMapClick: (lat: number, lng: number) => {
                       setCandidate({ lat, lng });
-                      setSimResult(null);
+                      setRating(null);
+                      setShopRating(null);
                     },
                   }
                 : {})}
@@ -603,6 +803,25 @@ function Heatmap() {
           </Suspense>
         </ClientOnly>
       </div>
+
+      {showShops && (
+        <SahitiRatingPanel
+          candidate={candidate}
+          rating={rating}
+          ratingCategory={ratingCategory}
+          onCategoryChange={(category) => {
+            setRatingCategory(category);
+            setRating(null);
+          }}
+          onRate={() => {
+            if (!candidate) return;
+            setShopRating(null);
+            setRating(
+              rateLocation({ lat: candidate.lat, lng: candidate.lng, category: ratingCategory }),
+            );
+          }}
+        />
+      )}
 
       <div className="mt-3 space-y-2">
         {showShops && (
@@ -621,8 +840,8 @@ function Heatmap() {
             </ul>
             <RiskLegend />
             <p className="text-xs text-muted-foreground">
-              Circles with a number group nearby shops. Click one to zoom in. Click empty map to
-              place a candidate pin for the feasibility check below.
+              Circles with a number group nearby shops. Click one to zoom in. Click empty map, pick
+              a shop type and run the Sahiti Rating below.
             </p>
           </>
         )}
@@ -663,6 +882,20 @@ function Heatmap() {
                     setAreaFocus({ lat: target.lat, lng: target.lng, zoom: 17 });
                   }, 0);
                 }}
+                onRate={(target) => {
+                  // Rate the shop itself, at its own spot, in its own trade.
+                  setRating(null);
+                  setShopRating({
+                    shop: target,
+                    rating: rateLocation({
+                      lat: target.lat,
+                      lng: target.lng,
+                      category: target.category,
+                      shop: target,
+                    }),
+                  });
+                }}
+                rated={shopRating?.shop.id === shop.id ? shopRating.rating : null}
               />
             ))}
           </div>

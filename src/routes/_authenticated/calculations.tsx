@@ -4,9 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentsTab } from "@/components/calculations/DocumentsTab";
 import { LoanMonitorTab } from "@/components/calculations/LoanMonitorTab";
-import { LoanTab } from "@/components/calculations/LoanTab";
 import { MarketTab } from "@/components/calculations/MarketTab";
-import { RoiTrackerTab } from "@/components/calculations/RoiTrackerTab";
 import { SchemeApplyTab } from "@/components/calculations/SchemeApplyTab";
 
 export const Route = createFileRoute("/_authenticated/calculations")({
@@ -31,16 +29,14 @@ export const Route = createFileRoute("/_authenticated/calculations")({
 });
 
 const TABS = [
-  { value: "loan", label: "Loan", panel: <LoanTab /> },
   { value: "documents", label: "Documents", panel: <DocumentsTab /> },
-  { value: "roi", label: "ROI tracker", panel: <RoiTrackerTab /> },
   { value: "market", label: "Market", panel: <MarketTab /> },
   { value: "monitor", label: "Loan monitor", panel: <LoanMonitorTab /> },
   { value: "apply", label: "Apply for scheme", panel: <SchemeApplyTab /> },
 ];
 
 function Calculations() {
-  const [current, setCurrent] = useState("loan");
+  const [current, setCurrent] = useState("documents");
   const listRef = useRef<HTMLDivElement>(null);
 
   /*

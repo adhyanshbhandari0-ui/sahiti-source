@@ -19,9 +19,9 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { to: "/dashboard" as const, key: "dashboard", icon: LayoutDashboard },
-  { to: "/calculations" as const, key: "calculations", icon: Calculator },
   { to: "/feed" as const, key: "feed", icon: Newspaper },
   { to: "/heatmap" as const, key: "heatmap", icon: Map },
+  { to: "/calculations" as const, key: "calculations", icon: Calculator },
   { to: "/assistant" as const, key: "assistant", icon: MessageCircle },
   { to: "/profile" as const, key: "profile", icon: UserRound },
   { to: "/settings" as const, key: "settings", icon: Settings },
@@ -29,9 +29,9 @@ const links = [
 
 /** Mobile bar mirrors the desktop nav; labels come from i18n (BUG-08). */
 const mobileLinks = [
-  { to: "/calculations" as const, key: "calculations", icon: Calculator },
   { to: "/feed" as const, key: "feed", icon: Newspaper },
   { to: "/heatmap" as const, key: "heatmap", icon: Map },
+  { to: "/calculations" as const, key: "calculations", icon: Calculator },
   { to: "/assistant" as const, key: "assistant", icon: MessageCircle },
 ] as const;
 

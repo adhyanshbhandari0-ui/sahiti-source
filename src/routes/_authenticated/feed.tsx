@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bookmark, MessageSquare, Search, Share2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import {
@@ -37,9 +37,11 @@ export const Route = createFileRoute("/_authenticated/feed")({
   component: Feed,
 });
 
+const AssistantEmbedded = lazy(() => import("@/components/feed/AssistantEmbedded"));
+
 const SAHITI_TYPES = new Set(["government", "news", "finance"]);
 
-type FeedTab = "sahiti" | "community";
+type FeedTab = "sahiti" | "community" | "ai";
 
 function isSahitiPost(post: FeedPost) {
   return SAHITI_TYPES.has(post.post_type);
@@ -187,6 +189,7 @@ function Feed() {
           <TabsList className="flex h-auto w-full flex-wrap justify-start">
             <TabsTrigger value="sahiti">Schemes and Sahiti</TabsTrigger>
             <TabsTrigger value="community">Community</TabsTrigger>
+            <TabsTrigger value="ai">Sahiti AI</TabsTrigger>
           </TabsList>
 
           <TabsContent value="sahiti" className="mt-6 space-y-6">
@@ -233,6 +236,10 @@ function Feed() {
               onToggleSave={(id) => void toggleSave(id)}
               onShare={(content) => void share(content)}
             />
+          </TabsContent>
+
+          <TabsContent value="ai" className="mt-6">
+            <AssistantEmbedded />
           </TabsContent>
         </Tabs>
 
