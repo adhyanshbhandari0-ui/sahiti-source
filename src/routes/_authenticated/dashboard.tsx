@@ -106,7 +106,7 @@ function Dashboard() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/85 via-primary/60 to-primary/35" />
         <div className="absolute inset-0 flex flex-col justify-end p-5 text-white sm:p-6">
-          <p className="sahiti-kicker text-saffron">Your business snapshot</p>
+          <h2 className="sahiti-kicker text-saffron">Your business snapshot</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-white/90">
             Figures come from months you log in the ROI tracker. Map and scheme tools sit one tap
             away.
@@ -178,7 +178,10 @@ function Dashboard() {
         {data?.milestones.length ? (
           <ul className="mt-4 space-y-3">
             {data.milestones.map((milestone) => (
-              <li key={milestone.id} className="sahiti-panel flex items-center justify-between gap-3 p-4 text-sm">
+              <li
+                key={milestone.id}
+                className="sahiti-panel flex items-center justify-between gap-3 p-4 text-sm"
+              >
                 <span className="font-medium">{milestone.title}</span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
                   {milestone.achieved_on}

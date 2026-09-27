@@ -163,7 +163,11 @@ const labels: Record<Locale, Dict> = {
   },
 };
 
-type I18nValue = { locale: Locale; setLocale: (locale: Locale) => void; t: (key: string) => string };
+type I18nValue = {
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+  t: (key: string) => string;
+};
 
 const I18nContext = createContext<I18nValue | null>(null);
 

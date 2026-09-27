@@ -95,7 +95,12 @@ export const Route = createFileRoute("/api/places")({
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
           return reply({ error: "lat and lng are required" }, 400);
         }
-        if (lat < BOUNDS.minLat || lat > BOUNDS.maxLat || lng < BOUNDS.minLng || lng > BOUNDS.maxLng) {
+        if (
+          lat < BOUNDS.minLat ||
+          lat > BOUNDS.maxLat ||
+          lng < BOUNDS.minLng ||
+          lng > BOUNDS.maxLng
+        ) {
           return reply({ error: "Coordinates are outside the supported area" }, 400);
         }
 

@@ -44,12 +44,7 @@ export function areaGoogleMapsUrl(lat: number, lng: number, zoom = 15): string {
 }
 
 /** A Google Maps search for a trade, scoped to an area. */
-export function areaGoogleSearchUrl(
-  term: string,
-  lat: number,
-  lng: number,
-  zoom = 15,
-): string {
+export function areaGoogleSearchUrl(term: string, lat: number, lng: number, zoom = 15): string {
   return `${MAPS_BASE}/search/${encodeURIComponent(term)}/@${lat},${lng},${zoom}z`;
 }
 
@@ -104,9 +99,7 @@ export type GooglePlacesRequest = {
  * Returns `null` when the server has no key configured, so callers can hide
  * the Google panel rather than showing an error the user cannot act on.
  */
-export async function fetchGoogleShops(
-  request: GooglePlacesRequest,
-): Promise<GoogleShop[] | null> {
+export async function fetchGoogleShops(request: GooglePlacesRequest): Promise<GoogleShop[] | null> {
   const response = await fetch("/api/places", {
     method: "POST",
     headers: { "content-type": "application/json" },

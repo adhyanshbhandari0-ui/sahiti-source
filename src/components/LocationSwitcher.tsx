@@ -57,9 +57,13 @@ export function LocationSwitcher() {
             >
               <span>
                 <span className="block text-sm font-medium">{cluster.name}</span>
-                <span className="block text-xs font-normal text-muted-foreground">{cluster.detail}</span>
+                <span className="block text-xs font-normal text-muted-foreground">
+                  {cluster.detail}
+                </span>
               </span>
-              {selected.name === cluster.name && <Check aria-hidden="true" className="size-4 text-primary" />}
+              {selected.name === cluster.name && (
+                <Check aria-hidden="true" className="size-4 text-primary" />
+              )}
             </Button>
           ))}
         </div>

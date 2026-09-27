@@ -22,12 +22,21 @@ import {
   shopGoogleMapsUrl,
   type GoogleShop,
 } from "@/lib/googleMaps";
-import { focusForShops } from "@/lib/shopClusters";
+import { SIMULATOR_BUSINESS_TYPES, type FeasibilityResult } from "@/lib/feasibility";
+import { focusForShops, type ShopFocus } from "@/lib/shopClusters";
 import { supabase } from "@/integrations/supabase/client";
 
 const RiskMap = lazy(() => import("@/components/RiskMap"));
 
 type Layer = "both" | "shops" | "zones";
+type RiskFilter = "all" | "low" | "moderate" | "high";
+
+const RISK_FILTERS: Array<{ value: RiskFilter; label: string; color?: string }> = [
+  { value: "all", label: "All risks" },
+  { value: "low", label: "Low risk", color: "#10b981" },
+  { value: "moderate", label: "Moderate", color: "#f59e0b" },
+  { value: "high", label: "High risk", color: "#ef4444" },
+];
 
 const LAYERS: Array<{ value: Layer; label: string }> = [
   { value: "shops", label: "Shops" },
@@ -40,17 +49,34 @@ const AREA_CENTER = { lat: 18.585, lng: 73.925 };
 const AREA_ZOOM = 13;
 
 /** Stat cards above the filters, as on the SIH dashboard. */
-function StatsRow({ total, low, verified }: { total: number; low: number; verified: number }) {
+function StatsRow({
+  total,
+  low,
+  moderate,
+  high,
+  verified,
+}: {
+  total: number;
+  low: number;
+  moderate: number;
+  high: number;
+  verified: number;
+}) {
   const cards = [
     { label: "Active stores", value: total, color: undefined },
-    { label: "Low-risk pockets", value: low, color: "#10b981" },
+    { label: "Low risk", value: low, color: "#10b981" },
+    { label: "Moderate", value: moderate, color: "#f59e0b" },
+    { label: "High risk", value: high, color: "#ef4444" },
     { label: "Google verified", value: verified, color: "#38bdf8" },
   ];
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {cards.map((card) => (
         <div key={card.label} className="rounded-md border p-3">
-          <p className="text-lg font-semibold" style={card.color ? { color: card.color } : undefined}>
+          <p
+            className="text-lg font-semibold"
+            style={card.color ? { color: card.color } : undefined}
+          >
             {card.value}
           </p>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{card.label}</p>
@@ -66,15 +92,27 @@ function RiskLegend() {
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
       <span className="font-medium">Pin colour:</span>
       <span className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: "#10b981" }} />
+        <span
+          aria-hidden="true"
+          className="size-2.5 rounded-full"
+          style={{ background: "#10b981" }}
+        />
         Low risk (opportunity)
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: "#f59e0b" }} />
+        <span
+          aria-hidden="true"
+          className="size-2.5 rounded-full"
+          style={{ background: "#f59e0b" }}
+        />
         Moderate
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: "#ef4444" }} />
+        <span
+          aria-hidden="true"
+          className="size-2.5 rounded-full"
+          style={{ background: "#ef4444" }}
+        />
         High risk (saturated)
       </span>
     </div>
@@ -115,15 +153,19 @@ function ShopCard({ shop, onFocus }: { shop: Shop; onFocus?: (shop: Shop) => voi
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold leading-5">{shop.name}</h3>
-          {shop.nameMr ? (
-            <p className="text-xs text-muted-foreground">{shop.nameMr}</p>
-          ) : null}
+          {shop.nameMr ? <p className="text-xs text-muted-foreground">{shop.nameMr}</p> : null}
         </div>
         <span
           className="mt-0.5 shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-white"
           style={{ background: shop.corridor?.riskColor ?? SHOP_CATEGORY_COLORS[shop.category] }}
         >
-          {shop.riskLevel === "low" ? "Low risk" : shop.riskLevel === "high" ? "High risk" : shop.riskLevel === "moderate" ? "Moderate" : shop.category}
+          {shop.riskLevel === "low"
+            ? "Low risk"
+            : shop.riskLevel === "high"
+              ? "High risk"
+              : shop.riskLevel === "moderate"
+                ? "Moderate"
+                : shop.category}
         </span>
       </div>
 
@@ -143,7 +185,11 @@ function ShopCard({ shop, onFocus }: { shop: Shop; onFocus?: (shop: Shop) => voi
 
       {shop.recommendedSchemes && shop.recommendedSchemes.length > 0 ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          Schemes: {shop.recommendedSchemes.slice(0, 2).map((scheme) => scheme.name).join(", ")}
+          Schemes:{" "}
+          {shop.recommendedSchemes
+            .slice(0, 2)
+            .map((scheme) => scheme.name)
+            .join(", ")}
         </p>
       ) : null}
 
@@ -207,8 +253,10 @@ function Heatmap() {
   const [zoneFilter, setZoneFilter] = useState("All");
   const [localityFilter, setLocalityFilter] = useState<"All" | ShopLocality>("All");
   const [categoryFilter, setCategoryFilter] = useState<"All" | ShopCategory>("All");
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
   const [search, setSearch] = useState("");
   const [focusToken, setFocusToken] = useState(0);
+  const [areaFocus, setAreaFocus] = useState<ShopFocus | null>(null);
   const [areaFocusToken, setAreaFocusToken] = useState(0);
   // Feasibility simulator state (ported from the SIH dashboard's Risk Simulator tab).
   const [candidate, setCandidate] = useState<{ lat: number; lng: number } | null>(null);
@@ -268,21 +316,25 @@ function Heatmap() {
         (shop) =>
           (localityFilter === "All" || shop.locality === localityFilter) &&
           (categoryFilter === "All" || shop.category === categoryFilter) &&
+          (riskFilter === "all" || shop.riskLevel === riskFilter) &&
           (search.trim() === "" ||
             shop.name.toLowerCase().includes(search.trim().toLowerCase()) ||
             (shop.street ?? "").toLowerCase().includes(search.trim().toLowerCase())),
       ),
-    [localityFilter, categoryFilter, search],
+    [localityFilter, categoryFilter, riskFilter, search],
   );
 
-  const corridorStats = useMemo(
-    () => ({
+  const corridorStats = useMemo(() => {
+    const moderate = SHOPS.filter((shop) => shop.riskLevel === "moderate").length;
+    const high = SHOPS.filter((shop) => shop.riskLevel === "high").length;
+    return {
       total: SHOPS.length,
       lowRisk: SHOPS.filter((shop) => shop.riskLevel === "low").length,
       googleVerified: SHOPS.filter((shop) => shop.rating !== undefined).length,
-    }),
-    [],
-  );
+      moderate,
+      high,
+    };
+  }, []);
 
   const focus = useMemo(
     () =>
@@ -349,6 +401,8 @@ function Heatmap() {
           <StatsRow
             total={corridorStats.total}
             low={corridorStats.lowRisk}
+            moderate={corridorStats.moderate}
+            high={corridorStats.high}
             verified={corridorStats.googleVerified}
           />
         </div>
@@ -424,6 +478,40 @@ function Heatmap() {
         {showShops && (
           <div
             role="group"
+            aria-label="Filter by competition risk"
+            className="flex flex-wrap items-center gap-2"
+          >
+            <span className="text-xs font-medium text-muted-foreground">Risk</span>
+            {RISK_FILTERS.map((option) => {
+              const count =
+                option.value === "all"
+                  ? SHOPS.length
+                  : SHOPS.filter((shop) => shop.riskLevel === option.value).length;
+              return (
+                <Button
+                  key={option.value}
+                  size="sm"
+                  variant={riskFilter === option.value ? "default" : "outline"}
+                  aria-pressed={riskFilter === option.value}
+                  onClick={() => setRiskFilter(option.value)}
+                >
+                  {option.color ? (
+                    <span
+                      aria-hidden="true"
+                      className="size-2 rounded-full"
+                      style={{ background: option.color }}
+                    />
+                  ) : null}
+                  {option.label} ({count})
+                </Button>
+              );
+            })}
+          </div>
+        )}
+
+        {showShops && (
+          <div
+            role="group"
             aria-label="Filter by shop category"
             className="flex flex-wrap items-center gap-2"
           >
@@ -470,7 +558,12 @@ function Heatmap() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-md border">
+      {/*
+       * isolation traps Leaflet's high z-indexes (panes 400+, controls 1000)
+       * inside this box, so the map can never paint over the sticky header
+       * while scrolling (BUG-04).
+       */}
+      <div className="sahiti-map-wrap overflow-hidden rounded-md border">
         <ClientOnly
           /*
            * The placeholder uses the same class as the map itself. Matching the
@@ -497,14 +590,14 @@ function Heatmap() {
               areaFocus={focus}
               areaFocusToken={areaFocusToken}
               candidate={showShops ? candidate : null}
-              onMapClick={
-                showShops
-                  ? (lat, lng) => {
+              {...(showShops
+                ? {
+                    onMapClick: (lat: number, lng: number) => {
                       setCandidate({ lat, lng });
                       setSimResult(null);
-                    }
-                  : undefined
-              }
+                    },
+                  }
+                : {})}
               showHubs={showShops}
             />
           </Suspense>
@@ -513,27 +606,25 @@ function Heatmap() {
 
       <div className="mt-3 space-y-2">
         {showShops && (
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            {SHOP_CATEGORIES.map((category) => (
-              <li key={category} className="flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="size-2.5 rounded-full border border-white shadow-sm"
-                  style={{ background: SHOP_CATEGORY_COLORS[category] }}
-                />
-                {category}
-              </li>
-            ))}
-        {showShops && (
           <>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {SHOP_CATEGORIES.map((category) => (
+                <li key={category} className="flex items-center gap-1.5">
+                  <span
+                    aria-hidden="true"
+                    className="size-2.5 rounded-full border border-white shadow-sm"
+                    style={{ background: SHOP_CATEGORY_COLORS[category] }}
+                  />
+                  {category}
+                </li>
+              ))}
+            </ul>
             <RiskLegend />
             <p className="text-xs text-muted-foreground">
               Circles with a number group nearby shops. Click one to zoom in. Click empty map to
               place a candidate pin for the feasibility check below.
             </p>
           </>
-        )}
-          </ul>
         )}
         {showZones && (
           <p className="text-xs text-muted-foreground">

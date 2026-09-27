@@ -24,9 +24,11 @@ export function formatINRPrecise(value: number): string {
 
 export function formatDate(value: string | Date): string {
   const date = typeof value === "string" ? new Date(value) : value;
-  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(
-    date,
-  );
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 export function timeAgo(value: string): string {

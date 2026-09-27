@@ -66,7 +66,10 @@ function About() {
           <ul className="space-y-3">
             {INCLUDED.map((item) => (
               <li key={item} className="flex gap-3">
-                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-saffron" aria-hidden="true" />
+                <span
+                  className="mt-2 size-1.5 shrink-0 rounded-full bg-saffron"
+                  aria-hidden="true"
+                />
                 <span>{item}</span>
               </li>
             ))}

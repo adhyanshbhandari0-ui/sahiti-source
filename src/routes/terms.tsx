@@ -74,7 +74,10 @@ function Terms() {
           <section>
             <h2 className="text-lg font-semibold text-foreground">6. Acceptable use</h2>
             <ul className="list-disc space-y-2 pl-5">
-              <li>Post only business-related content. Personal, political and unlawful content is not allowed.</li>
+              <li>
+                Post only business-related content. Personal, political and unlawful content is not
+                allowed.
+              </li>
               <li>Do not post another person's private information or financial credentials.</li>
               <li>Do not post false claims about government schemes or guaranteed returns.</li>
               <li>Do not attempt to access other accounts or disrupt the service.</li>

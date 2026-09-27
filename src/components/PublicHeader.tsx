@@ -45,7 +45,10 @@ export function PublicHeader() {
         </Button>
       </div>
       {open && (
-        <nav className="border-t border-white/15 px-4 py-4 md:hidden" aria-label="Mobile navigation">
+        <nav
+          className="border-t border-white/15 px-4 py-4 md:hidden"
+          aria-label="Mobile navigation"
+        >
           <div className="flex flex-col gap-3">
             {links.map((link) => (
               <Link
@@ -57,7 +60,10 @@ export function PublicHeader() {
                 {link.label}
               </Link>
             ))}
-            <Button asChild className="bg-saffron font-semibold text-foreground hover:bg-saffron/90">
+            <Button
+              asChild
+              className="bg-saffron font-semibold text-foreground hover:bg-saffron/90"
+            >
               <Link to="/auth">Get Started</Link>
             </Button>
           </div>

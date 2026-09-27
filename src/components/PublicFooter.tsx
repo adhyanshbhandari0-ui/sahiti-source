@@ -13,7 +13,10 @@ export function PublicFooter() {
             built for Smart India Hackathon 2026, MoSJE problem statement 26091.
           </p>
         </div>
-        <nav className="flex flex-wrap gap-x-6 gap-y-3 md:justify-end" aria-label="Footer navigation">
+        <nav
+          className="flex flex-wrap gap-x-6 gap-y-3 md:justify-end"
+          aria-label="Footer navigation"
+        >
           <Link to="/about" className="text-sm text-white/80 hover:text-white">
             About
           </Link>

@@ -154,10 +154,18 @@
    */
   html {
     scrollbar-gutter: stable;
-    /* Anchor jumps and focus moves must clear the sticky header. */
-    scroll-padding-top: 7.5rem;
-    scroll-behavior: auto;
-    -webkit-text-size-adjust: 100%;
+    /*
+     * Anchor jumps and focus moves must clear the sticky header. Mobile shows
+     * one 64px bar plus the saffron strip; desktop adds the 40px secondary nav
+     * (BUG-03), so give wide screens the larger clearance.
+     */
+    scroll-padding-top: 4.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      scroll-padding-top: 7.5rem;
+    }
   }
 
   body {
@@ -269,20 +277,39 @@
     min-height: 24rem;
   }
 
-  /* Leaflet needs an explicit height; keep it comfortable on short screens. */
+  /*
+   * Leaflet needs an explicit height. Use dynamic viewport units so the map
+   * stays usable on short mobile screens without crowding the page, with a
+   * comfortable floor and a desktop ceiling.
+   */
   .sahiti-map {
-    height: 380px;
+    height: max(380px, 52dvh);
   }
 
   @media (min-width: 640px) {
     .sahiti-map {
-      height: 480px;
+      height: min(480px, 60dvh);
     }
+  }
+
+  /*
+   * Wrap every Leaflet map in its own stacking context (BUG-04): Leaflet's
+   * internal panes and controls use z-indexes up to 1000, which would otherwise
+   * paint over the sticky header (z-40) while scrolling.
+   */
+  .sahiti-map-wrap {
+    position: relative;
+    isolation: isolate;
   }
 
   /* The fixed mobile bar must not chain scroll gestures into the page. */
   .sahiti-mobile-nav {
     overscroll-behavior-y: none;
+  }
+
+  /* Keep the fixed mobile bar below Leaflet controls if they ever escape. */
+  .sahiti-mobile-nav {
+    z-index: 1200;
   }
 
   /* Long lists of cards: keep scroll momentum but contain paint. */

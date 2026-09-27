@@ -19,16 +19,8 @@ import {
   type Shop,
   type ShopCategory,
 } from "@/data/shops";
-import {
-  shopGoogleDirectionsUrl,
-  shopGoogleMapsUrl,
-} from "@/lib/googleMaps";
-import {
-  dominantCategory,
-  groupShops,
-  type ShopFocus,
-  type ShopGroup,
-} from "@/lib/shopClusters";
+import { shopGoogleDirectionsUrl, shopGoogleMapsUrl } from "@/lib/googleMaps";
+import { dominantCategory, groupShops, type ShopFocus, type ShopGroup } from "@/lib/shopClusters";
 
 /** A Sahiti research zone. These are area-level and carry opportunity scores. */
 export type RiskPlace = {
@@ -101,10 +93,7 @@ function makeShopIcon(color: string) {
   return L.divIcon({
     // Custom class name so Leaflet's default .leaflet-div-icon box never applies.
     className: "sahiti-shop-pin",
-    html:
-      '<span class="sahiti-shop-pin__dot" style="background:' +
-      color +
-      '"></span>',
+    html: '<span class="sahiti-shop-pin__dot" style="background:' + color + '"></span>',
     iconSize: [16, 16],
     iconAnchor: [8, 8],
     popupAnchor: [0, -9],
@@ -121,7 +110,7 @@ function makeClusterIcon(count: number, color: string) {
     html:
       '<span class="sahiti-cluster-pin__bubble" style="--pin:' +
       color +
-      ';width:' +
+      ";width:" +
       size +
       "px;height:" +
       size +
@@ -239,9 +228,7 @@ function ShopPopupBody({ shop }: { shop: Shop }) {
       <p className="sahiti-popup__line">{formatShopAddress(shop)}</p>
       {corridor?.distToAdypuKm !== undefined || corridor?.distToLohegaonKm !== undefined ? (
         <p className="sahiti-popup__line">
-          {corridor?.distToAdypuKm !== undefined
-            ? `${corridor.distToAdypuKm} km to ADYPU`
-            : null}
+          {corridor?.distToAdypuKm !== undefined ? `${corridor.distToAdypuKm} km to ADYPU` : null}
           {corridor?.distToAdypuKm !== undefined && corridor?.distToLohegaonKm !== undefined
             ? " · "
             : null}
@@ -272,12 +259,14 @@ function ShopPopupBody({ shop }: { shop: Shop }) {
             : ""}
         </p>
       ) : null}
-      {shop.riskDescription ? (
-        <p className="sahiti-popup__line">{shop.riskDescription}</p>
-      ) : null}
+      {shop.riskDescription ? <p className="sahiti-popup__line">{shop.riskDescription}</p> : null}
       {shop.recommendedSchemes && shop.recommendedSchemes.length > 0 ? (
         <p className="sahiti-popup__line">
-          Schemes: {shop.recommendedSchemes.slice(0, 2).map((scheme) => scheme.name).join(", ")}
+          Schemes:{" "}
+          {shop.recommendedSchemes
+            .slice(0, 2)
+            .map((scheme) => scheme.name)
+            .join(", ")}
         </p>
       ) : null}
       <p className="sahiti-popup__coords">{formatShopCoordinates(shop)}</p>
@@ -303,17 +292,16 @@ function ShopPopupBody({ shop }: { shop: Shop }) {
   );
 }
 
+/** Pin icon for a colour, building it on demand if that colour was never cached. */
+function iconForColor(icons: Record<string, L.DivIcon>, color: string): L.DivIcon {
+  return icons[color] ?? makeShopIcon(color);
+}
+
 /**
  * Draws shops as pins or clusters depending on zoom. Kept as its own component
  * because it needs the map's zoom, which is only readable inside MapContainer.
  */
-function ShopLayer({
-  shops,
-  icons,
-}: {
-  shops: Shop[];
-  icons: Record<ShopCategory, L.DivIcon>;
-}) {
+function ShopLayer({ shops, icons }: { shops: Shop[]; icons: Record<string, L.DivIcon> }) {
   const map = useMap();
   const zoom = useMapZoom();
   const groups = useMemo(() => groupShops(shops, zoom), [shops, zoom]);
@@ -325,7 +313,7 @@ function ShopLayer({
           <Marker
             key={group.key}
             position={[group.lat, group.lng]}
-            icon={icons[shopPinColor(group.shops[0]!)]}
+            icon={iconForColor(icons, shopPinColor(group.shops[0]!))}
           >
             <Popup>
               <ShopPopupBody shop={group.shops[0]!} />
@@ -335,7 +323,10 @@ function ShopLayer({
           <Marker
             key={group.key}
             position={[group.lat, group.lng]}
-            icon={makeClusterIcon(group.shops.length, SHOP_CATEGORY_COLORS[dominantCategory(group.shops)])}
+            icon={makeClusterIcon(
+              group.shops.length,
+              SHOP_CATEGORY_COLORS[dominantCategory(group.shops)],
+            )}
             eventHandlers={{
               // Clicking a bubble is the fastest way in, so zoom to the shops
               // it stands for rather than opening another list.
@@ -405,10 +396,7 @@ export default function RiskMap({
   // One icon per colour actually in use: category colours plus the three
   // SIH risk colours corridor pins are tinted with.
   const shopIcons = useMemo(() => {
-    const colors = new Set<string>([
-      ...Object.values(SHOP_CATEGORY_COLORS),
-      ...RISK_COLORS,
-    ]);
+    const colors = new Set<string>([...Object.values(SHOP_CATEGORY_COLORS), ...RISK_COLORS]);
     return Object.fromEntries([...colors].map((color) => [color, makeShopIcon(color)])) as Record<
       string,
       L.DivIcon
@@ -492,8 +480,8 @@ export default function RiskMap({
                   {place.business_type} · opportunity {place.risk_score}/10
                 </p>
                 <p className="sahiti-popup__line">
-                  Competition {place.competitor_density}/10 · saturation{" "}
-                  {place.market_saturation}/10
+                  Competition {place.competitor_density}/10 · saturation {place.market_saturation}
+                  /10
                 </p>
                 <p className="sahiti-popup__line">{place.demand_note}</p>
                 <p className="sahiti-popup__source">Sahiti demonstration research</p>

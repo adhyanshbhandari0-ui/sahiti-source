@@ -111,7 +111,11 @@ function Profile() {
     }
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ ...form, employees: Number(form.employees) || 0, updated_at: new Date().toISOString() })
+      .update({
+        ...form,
+        employees: Number(form.employees) || 0,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", user!.id);
     if (updateError) {
       setError(updateError.message);
@@ -174,16 +178,68 @@ function Profile() {
         <section className="rounded-md border p-5">
           <h2 className="text-base font-semibold">Business details</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field id="display_name" label="Your name" value={form.display_name} onChange={(v) => setForm({ ...form, display_name: v })} />
-            <Field id="business_name" label="Business name" value={form.business_name} onChange={(v) => setForm({ ...form, business_name: v })} />
-            <Field id="category" label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
-            <Field id="monthly_revenue_range" label="Monthly revenue range" value={form.monthly_revenue_range} onChange={(v) => setForm({ ...form, monthly_revenue_range: v })} />
-            <Field id="block" label="Block or area" value={form.block} onChange={(v) => setForm({ ...form, block: v })} />
-            <Field id="district" label="District" value={form.district} onChange={(v) => setForm({ ...form, district: v })} />
-            <Field id="pincode" label="Pincode" value={form.pincode} onChange={(v) => setForm({ ...form, pincode: v.replace(/[^\d]/g, "").slice(0, 6) })} />
-            <Field id="employees" label="Employees" value={String(form.employees)} onChange={(v) => setForm({ ...form, employees: Number(v.replace(/[^\d]/g, "")) || 0 })} />
-            <Field id="whatsapp" label="WhatsApp (optional)" value={form.whatsapp} onChange={(v) => setForm({ ...form, whatsapp: v })} />
-            <Field id="email" label="Email (optional)" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
+            <Field
+              id="display_name"
+              label="Your name"
+              value={form.display_name}
+              onChange={(v) => setForm({ ...form, display_name: v })}
+            />
+            <Field
+              id="business_name"
+              label="Business name"
+              value={form.business_name}
+              onChange={(v) => setForm({ ...form, business_name: v })}
+            />
+            <Field
+              id="category"
+              label="Category"
+              value={form.category}
+              onChange={(v) => setForm({ ...form, category: v })}
+            />
+            <Field
+              id="monthly_revenue_range"
+              label="Monthly revenue range"
+              value={form.monthly_revenue_range}
+              onChange={(v) => setForm({ ...form, monthly_revenue_range: v })}
+            />
+            <Field
+              id="block"
+              label="Block or area"
+              value={form.block}
+              onChange={(v) => setForm({ ...form, block: v })}
+            />
+            <Field
+              id="district"
+              label="District"
+              value={form.district}
+              onChange={(v) => setForm({ ...form, district: v })}
+            />
+            <Field
+              id="pincode"
+              label="Pincode"
+              value={form.pincode}
+              onChange={(v) => setForm({ ...form, pincode: v.replace(/[^\d]/g, "").slice(0, 6) })}
+            />
+            <Field
+              id="employees"
+              label="Employees"
+              value={String(form.employees)}
+              onChange={(v) =>
+                setForm({ ...form, employees: Number(v.replace(/[^\d]/g, "")) || 0 })
+              }
+            />
+            <Field
+              id="whatsapp"
+              label="WhatsApp (optional)"
+              value={form.whatsapp}
+              onChange={(v) => setForm({ ...form, whatsapp: v })}
+            />
+            <Field
+              id="email"
+              label="Email (optional)"
+              value={form.email}
+              onChange={(v) => setForm({ ...form, email: v })}
+            />
           </div>
           <div className="mt-4">
             <Label htmlFor="description">What your business does</Label>
@@ -218,7 +274,13 @@ function Profile() {
               <Upload aria-hidden="true" className="size-4" />
               {uploading ? "Uploading…" : "Choose a photo"}
             </Label>
-            <input id="photo" type="file" accept="image/*" className="sr-only" onChange={(e) => void upload(e)} />
+            <input
+              id="photo"
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => void upload(e)}
+            />
             <ul className="mt-4 grid grid-cols-2 gap-3">
               {(data?.images ?? []).map((image) => (
                 <li key={image.id} className="relative">

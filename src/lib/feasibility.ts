@@ -13,12 +13,7 @@ const ADYPU_COORDS = { lat: 18.6226, lng: 73.9063 };
 const LOHEGAON_COORDS = { lat: 18.5955, lng: 73.9268 };
 
 /** Great-circle distance in km, identical formula to the Python engine. */
-export function haversineKm(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
@@ -131,12 +126,14 @@ export function assessLocation(req: FeasibilityRequest): FeasibilityResult {
   let strategicAdvice: string;
   if (compCount >= 5) {
     riskLevel = "HIGH RISK";
-    verdict = "Over-saturated micro-zone. High cannibalization risk from established nearby stores.";
+    verdict =
+      "Over-saturated micro-zone. High cannibalization risk from established nearby stores.";
     strategicAdvice =
       "Avoid starting an identical store here unless you offer specialized niche inventory, 24/7 delivery, or substantial price advantage.";
   } else if (compCount >= 2) {
     riskLevel = "MODERATE RISK";
-    verdict = "Competitive but viable micro-zone. Market has existing players with moderate ratings.";
+    verdict =
+      "Competitive but viable micro-zone. Market has existing players with moderate ratings.";
     strategicAdvice =
       "Differentiate by onboarding onto ONDC for hyperlocal online orders and offering digital UPI loyalty.";
   } else {
@@ -171,8 +168,7 @@ export function assessLocation(req: FeasibilityRequest): FeasibilityResult {
       {
         scheme: "MoSJE NBCFDC / NSFDC Term Loan",
         limit: "Up to ₹5,00,000",
-        features:
-          "Concessional 5%-6% per annum interest for backward class/SC entrepreneurs",
+        features: "Concessional 5%-6% per annum interest for backward class/SC entrepreneurs",
       },
     );
   } else {

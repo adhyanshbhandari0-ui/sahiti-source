@@ -45,9 +45,13 @@ function Privacy() {
             <h2 className="text-lg font-semibold text-foreground">2. Information we collect</h2>
             <ul className="list-disc space-y-2 pl-5">
               <li>Mobile number and password used to create your account.</li>
-              <li>Business profile details you choose to enter, such as name, category and locality.</li>
+              <li>
+                Business profile details you choose to enter, such as name, category and locality.
+              </li>
               <li>Content you create: posts, comments, saved items, milestones and photos.</li>
-              <li>Financial figures you enter in the calculators and the return on investment tracker.</li>
+              <li>
+                Financial figures you enter in the calculators and the return on investment tracker.
+              </li>
               <li>Questions you send to the assistant and the replies generated for you.</li>
             </ul>
             <p className="mt-3">
@@ -56,7 +60,9 @@ function Privacy() {
             </p>
           </section>
           <section>
-            <h2 className="text-lg font-semibold text-foreground">3. How the information is used</h2>
+            <h2 className="text-lg font-semibold text-foreground">
+              3. How the information is used
+            </h2>
             <p>
               Your information is used only to operate the features you use: authenticating you,
               showing your own records, publishing posts you choose to publish, and generating

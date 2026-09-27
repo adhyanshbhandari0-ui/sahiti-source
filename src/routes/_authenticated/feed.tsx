@@ -299,10 +299,7 @@ function PostList({
         const official = isSahitiPost(post);
 
         return (
-          <article
-            key={post.id}
-            className="sahiti-panel sahiti-panel-hover p-5"
-          >
+          <article key={post.id} className="sahiti-panel sahiti-panel-hover p-5">
             <header className="flex items-start gap-3">
               <span
                 aria-hidden="true"
@@ -332,9 +329,7 @@ function PostList({
               className="mt-4 block w-full text-left"
             >
               <p className="text-sm leading-6 line-clamp-3">{post.content}</p>
-              <span className="mt-2 inline-flex text-xs font-medium text-primary">
-                Open thread
-              </span>
+              <span className="mt-2 inline-flex text-xs font-medium text-primary">Open thread</span>
             </button>
 
             <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
