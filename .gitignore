@@ -43,3 +43,14 @@ brag-output/
 
 # Stray installers
 *.exe
+
+# Local tooling caches (Freebuff / Vite)
+.freebuff/
+.vite/
+
+# Extracted SIH data dumps (source zips live outside the repo)
+sih_data_extracted/
+
+# Local machine helpers (dev server launchers)
+start-dev.sh
+sahiti-dev-launcher.sh
