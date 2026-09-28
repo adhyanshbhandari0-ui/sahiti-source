@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bookmark, MessageSquare, Search, Share2 } from "lucide-react";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   PostThreadDialog,
@@ -22,7 +22,7 @@ import { useSession } from "@/lib/session";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   validateSearch: (search: Record<string, unknown>): { tab?: FeedTab } => {
     const tab = search["tab"];
-    return tab === "ai" || tab === "sahiti" || tab === "community" ? { tab } : {};
+    return tab === "sahiti" || tab === "community" ? { tab } : {};
   },
   head: () => ({
     meta: [
@@ -41,11 +41,9 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-const AssistantEmbedded = lazy(() => import("@/components/feed/AssistantEmbedded"));
-
 const SAHITI_TYPES = new Set(["government", "news", "finance"]);
 
-type FeedTab = "community" | "sahiti" | "ai";
+type FeedTab = "community" | "sahiti";
 
 function isSahitiPost(post: FeedPost) {
   return SAHITI_TYPES.has(post.post_type);
@@ -60,8 +58,8 @@ function matchesSearch(post: FeedPost, needle: string) {
 }
 
 /**
- * The one and only feed. It is the home page after sign-in; Sahiti AI lives
- * here as a tab, so there is a single way into both.
+ * The one and only feed. It is the home page after sign-in; Sahiti AI has its
+ * own tab in the main navigation.
  */
 function Dashboard() {
   const { user } = useSession();
@@ -190,7 +188,6 @@ function Dashboard() {
           <TabsList className="flex h-auto w-full flex-wrap justify-start">
             <TabsTrigger value="community">{t("tabCommunity")}</TabsTrigger>
             <TabsTrigger value="sahiti">{t("tabSchemes")}</TabsTrigger>
-            <TabsTrigger value="ai">{t("tabAi")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="community" className="mt-6 space-y-6">
@@ -239,18 +236,6 @@ function Dashboard() {
               onToggleSave={(id) => void toggleSave(id)}
               onShare={(content) => void share(content)}
             />
-          </TabsContent>
-
-          <TabsContent value="ai" className="mt-6">
-            <Suspense
-              fallback={
-                <div className="sahiti-panel flex h-[60dvh] items-center justify-center text-sm text-muted-foreground">
-                  {t("aiLoading")}
-                </div>
-              }
-            >
-              <AssistantEmbedded />
-            </Suspense>
           </TabsContent>
         </Tabs>
 

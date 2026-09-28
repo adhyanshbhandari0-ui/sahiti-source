@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Calculator, LogOut, Map, Newspaper, UserRound } from "lucide-react";
+import { Calculator, LogOut, Map, Newspaper, Sparkles, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "./BrandLogo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -9,13 +9,14 @@ import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 /**
- * Sahiti has three destinations after sign-in: the Live feed (home, which
- * holds Sahiti AI as a tab), the Risk map, and Business calculations. Every
- * other path still exists but is reached from inside these pages, so the nav
- * never offers two ways into the same feature.
+ * Sahiti has four destinations after sign-in: the Live feed (home), Sahiti AI,
+ * the Risk map, and Business calculations. Every other path still exists but is
+ * reached from inside these pages, so the nav never offers two ways into the
+ * same feature.
  */
 const links = [
   { to: "/dashboard" as const, key: "feed", icon: Newspaper },
+  { to: "/ai" as const, key: "assistant", icon: Sparkles },
   { to: "/heatmap" as const, key: "heatmap", icon: Map },
   { to: "/calculations" as const, key: "calculations", icon: Calculator },
 ];
@@ -97,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="sahiti-mobile-nav fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(24_37_58_/_0.06)] backdrop-blur lg:hidden"
         aria-label="Primary mobile navigation"
       >
-        <div className="mx-auto grid h-16 max-w-lg grid-cols-3">
+        <div className="mx-auto grid h-16 max-w-lg grid-cols-4">
           {links.map((link) => {
             const active = pathname === link.to || pathname.startsWith(`${link.to}/`);
             return (

@@ -537,6 +537,7 @@ const en: Dict = {
     "Demand is occasion-led with strong price sensitivity. Trust and hallmarking influence repeat purchases.",
   marketLohegaonRoi:
     "Higher setup cost and slower inventory turnover suggest a longer payback period.",
+  aiPageDescription: "Ask about loans, schemes, documents or your market — in your own language.",
   "cat.Hardware": "Hardware",
   "cat.General store": "General store",
   "cat.Salon": "Salon",
@@ -1069,6 +1070,7 @@ const labels: Record<Locale, Dict> = {
     marketLohegaonDemand:
       "माँग अवसर-आधारित है और दाम के प्रति संवेदनशील। भरोसा और हॉलमार्किंग बार-बार खरीद पर असर डालते हैं।",
     marketLohegaonRoi: "ज़्यादा सेटअप लागत और धीमी माल घूमाव का मतलब लंबी वापसी अवधि है।",
+    aiPageDescription: "लोन, योजना, दस्तावेज़ या बाज़ार के बारे में पूछें — अपनी भाषा में।",
     "cat.Hardware": "हार्डवेयर",
     "cat.General store": "किराना दुकान",
     "cat.Salon": "सैलून",
@@ -1595,6 +1597,7 @@ const labels: Record<Locale, Dict> = {
     marketLohegaonDemand:
       "मागणी प्रसंगावर आधारित व किंमतीबाबत संवेदनशील. विश्वास व हॉलमार्किंग पुन्हा खरेदीवर परिणाम करते.",
     marketLohegaonRoi: "जास्त सेटअप खर्च व हळू माल फिरणे म्हणजे जास्त काळ परतावा लागतो.",
+    aiPageDescription: "कर्ज, योजना, कागदपत्रे किंवा बाजाराबद्दल विचारा — तुमच्या भाषेत.",
     "cat.Hardware": "हार्डवेअर",
     "cat.General store": "सामान्य दुकान",
     "cat.Salon": "सलून",
@@ -2117,6 +2120,7 @@ const labels: Record<Locale, Dict> = {
     marketLohegaonDemand:
       "માંગ પ્રસંગ-આધારિત અને ભાવ પ્રત્યે સંવેદનશીલ. વિશ્વાસ અને હોલમાર્કિંગ પુનઃખરીદ પર અસર કરે.",
     marketLohegaonRoi: "વધુ સેટઅપ ખર્ચ અને ધીમો માલ ફેરફાર એટલે લાંબો પરતાવાર સમય.",
+    aiPageDescription: "લોન, યોજના, દસ્તાવેજો કે બજાર વિશે પૂછો — તમારી ભાષામાં.",
     "cat.Hardware": "હાર્ડવેર",
     "cat.General store": "સામાન્ય સ્ટોર",
     "cat.Salon": "સેલૂન",
@@ -2643,6 +2647,7 @@ const labels: Record<Locale, Dict> = {
     marketLohegaonDemand:
       "চাহিদা উপলক্ষ-নির্ভর ও দামের প্রতি সংবেদনশীল। আস্থা ও হলমার্কিং বারবার কেনায় প্রভাব ফেলে।",
     marketLohegaonRoi: "বেশি সেটআপ খরচ ও ধীর মাল ঘোরা মানে দীর্ঘ ফেরতের সময়।",
+    aiPageDescription: "ঋণ, প্রকল্প, দলিল বা বাজার সম্পর্কে জিজ্ঞাসা করুন — নিজের ভাষায়।",
     "cat.Hardware": "হার্ডওয়্যার",
     "cat.General store": "সাধারণ দোকান",
     "cat.Salon": "সেলুন",
@@ -3193,6 +3198,8 @@ const labels: Record<Locale, Dict> = {
       "தேவை சந்தர்ப்பம்-சார்ந்தது, விலை உணர்திறன் கொண்டது. நம்பிக்கையும் ஹால்மார்க்கும் மறுவாங்கை பாதிக்கும்.",
     marketLohegaonRoi:
       "அதிக அமைப்பு செலவும் மெதுவான சரக்கு சுழற்சியும் நீண்ட திரும்ப காலத்தைக் குறிக்கும்.",
+    aiPageDescription:
+      "கடன், திட்டங்கள், ஆவணங்கள் அல்லது சந்தை பற்றிக் கேளுங்கள் — உங்கள் மொழியில்.",
     "cat.Hardware": "இரும்புக் கடை",
     "cat.General store": "பொதுக் கடை",
     "cat.Salon": "அழகுநிலையம்",
@@ -3724,6 +3731,7 @@ const labels: Record<Locale, Dict> = {
     marketLohegaonDemand:
       "డిమాండ్ సందర్భాలపై ఆధారపడి ఉంటుంది, ధరలకు సున్నితం. నమ్మకం, హాల్‌మార్క్ మళ్లీ కొనడంపై ప్రభావం చూపుతాయి.",
     marketLohegaonRoi: "ఎక్కువ సెటప్ ఖర్చు, నెమ్మదిగా సరుకు తిరగడం అంటే పొడవాటి వసూళ్ల కాలం.",
+    aiPageDescription: "రుణాలు, పథకాలు, పత్రాలు లేదా మార్కెట్ గురించి అడగండి — మీ భాషలో.",
     "cat.Hardware": "హార్డ్‌వేర్",
     "cat.General store": "జనరల్ స్టోర్",
     "cat.Salon": "సెలూన్",
