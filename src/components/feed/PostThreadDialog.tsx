@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { findSchemeByLabel, formatSchemeAmount } from "@/data/schemes";
 import { timeAgo } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 export type FeedPost = {
   id: string;
@@ -34,13 +35,6 @@ export type FeedComment = {
   created_at: string;
 };
 
-function sourceLabel(post: FeedPost) {
-  if (post.post_type === "government") return "Scheme desk";
-  if (post.post_type === "news") return "Sahiti research";
-  if (post.post_type === "finance") return "Industry desk";
-  return "Member";
-}
-
 export function PostThreadDialog({
   post,
   comments,
@@ -58,8 +52,16 @@ export function PostThreadDialog({
   onAddComment: (postId: string, content: string) => Promise<void> | void;
   onShare: (content: string) => void;
 }) {
+  const { t } = useLanguage();
   const [draft, setDraft] = useState("");
   const scheme = post ? findSchemeByLabel(post.scheme_type) : undefined;
+
+  function sourceLabel(post: FeedPost) {
+    if (post.post_type === "government") return t("sourceSchemeDesk");
+    if (post.post_type === "news") return t("sourceResearch");
+    if (post.post_type === "finance") return t("sourceIndustry");
+    return t("sourceMember");
+  }
 
   async function submitComment() {
     if (!post) return;
@@ -103,7 +105,7 @@ export function PostThreadDialog({
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{scheme.audience}</p>
 
                 <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  What you get
+                  {t("schemeBenefitTitle")}
                 </h4>
                 <ul className="mt-2 space-y-1.5 text-sm">
                   {scheme.benefits.map((benefit) => (
@@ -117,7 +119,7 @@ export function PostThreadDialog({
                 </ul>
 
                 <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Who qualifies
+                  {t("schemeEligibleTitle")}
                 </h4>
                 <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
                   {scheme.eligibility.map((point) => (
@@ -129,7 +131,7 @@ export function PostThreadDialog({
                 </ul>
 
                 <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Papers usually asked for
+                  {t("schemeDocsTitle")}
                 </h4>
                 <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
                   {scheme.documents.map((doc) => (
@@ -146,7 +148,7 @@ export function PostThreadDialog({
                   rel="noreferrer"
                   className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                 >
-                  Confirm current terms on Udyamimitra
+                  {t("confirmUdyamimitra")}
                   <ExternalLink aria-hidden="true" className="size-3.5" />
                 </a>
               </section>
@@ -154,25 +156,24 @@ export function PostThreadDialog({
 
             {!scheme && post.scheme_type && (
               <p className="rounded-md border bg-secondary p-3 text-xs leading-5 text-muted-foreground">
-                This note is tagged {post.scheme_type} and does not map to a single programme. Treat
-                it as a local observation rather than a scheme summary.
+                {t("schemeTaggedNote", { tag: post.scheme_type })}
               </p>
             )}
 
             <div className="flex flex-wrap gap-2">
               <Button variant="ghost" size="sm" onClick={() => onToggleSave(post.id)}>
                 <Bookmark className={isSaved ? "size-4 fill-current" : "size-4"} />
-                {isSaved ? "Saved" : "Save"}
+                {isSaved ? t("saved") : t("save")}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => onShare(post.content)}>
                 <Share2 className="size-4" />
-                Share
+                {t("share")}
               </Button>
             </div>
 
             <section className="border-t pt-4">
               <h3 className="text-sm font-semibold">
-                {comments.length} comment{comments.length === 1 ? "" : "s"}
+                {comments.length} {t("commentsLabel")}
               </h3>
               <ul className="mt-3 space-y-3">
                 {comments.map((comment) => (
@@ -185,29 +186,24 @@ export function PostThreadDialog({
                   </li>
                 ))}
                 {comments.length === 0 && (
-                  <li className="text-sm text-muted-foreground">
-                    Nobody has replied yet. Ask the first question.
-                  </li>
+                  <li className="text-sm text-muted-foreground">{t("noReplies")}</li>
                 )}
               </ul>
 
               <div className="mt-3 flex gap-2">
                 <Input
                   className="bg-muted"
-                  aria-label="Write a comment"
-                  placeholder="Add a reply"
+                  aria-label={t("comment")}
+                  placeholder={t("addReply")}
                   value={draft}
                   maxLength={500}
                   onChange={(event) => setDraft(event.target.value)}
                 />
-                <Button onClick={() => void submitComment()}>Comment</Button>
+                <Button onClick={() => void submitComment()}>{t("comment")}</Button>
               </div>
             </section>
 
-            <p className="text-xs leading-5 text-muted-foreground">
-              Scheme details are summaries for orientation. Confirm with the portal or your bank
-              before acting.
-            </p>
+            <p className="text-xs leading-5 text-muted-foreground">{t("schemeDisclaimer")}</p>
           </>
         )}
       </DialogContent>

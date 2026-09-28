@@ -1,5 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CalendarClock, ChevronDown, Landmark, Plus, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  ChevronDown,
+  Landmark,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -18,11 +26,22 @@ import { SCHEMES } from "@/data/schemes";
 import { supabase } from "@/integrations/supabase/client";
 import { addMonths, daysUntil, formatDate, todayIso } from "@/lib/dates";
 import { formatINR } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
 import { Field, MoneyField, Panel } from "./shared";
 
 const SUBSIDY_STATES = ["Not applicable", "Pending", "Approved", "Credited"] as const;
-const PREVIEW_ROWS = 6;
+
+/** Database value → i18n key for the subsidy badge and select options. */
+const SUBSIDY_KEYS: Record<string, string> = {
+  "Not applicable": "subsidyNotApplicable",
+  Pending: "subsidyPending",
+  Approved: "subsidyApproved",
+  Credited: "subsidyCredited",
+};
+
+/** Only the upcoming instalments show by default; the button below expands. */
+const UPCOMING_ROWS = 3;
 /** Safety cap so a repayment that never clears the interest cannot loop forever. */
 const MAX_PROJECTED_MONTHS = 480;
 
@@ -37,9 +56,7 @@ type RepaymentRow = {
 
 /**
  * Amortises a loan properly: each instalment covers the interest on the
- * remaining balance first, and only the remainder reduces principal. The
- * previous version subtracted the whole EMI from the balance, which
- * understated the closing balance on every row.
+ * remaining balance first, and only the remainder reduces principal.
  */
 function projectRepayments(
   outstanding: number,
@@ -70,12 +87,28 @@ function projectRepayments(
   return { rows, clears: balance <= 0.5 };
 }
 
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+
+function dueLabel(days: number, t: Translator): string {
+  if (days < 0) {
+    const n = Math.abs(days);
+    return t("overdueBy", { n, s: n === 1 ? "" : "s" });
+  }
+  if (days === 0) return t("dueToday");
+  return t("daysToGo", { n: days, s: days === 1 ? "" : "s" });
+}
+
 export function LoanMonitorTab() {
   const { user } = useSession();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  // AI explainer, per loan: which loan is streaming, its answer, and failures.
+  const [aiBusyFor, setAiBusyFor] = useState<string | null>(null);
+  const [aiAnswers, setAiAnswers] = useState<Record<string, string>>({});
+  const [aiErrorFor, setAiErrorFor] = useState<string | null>(null);
   const [form, setForm] = useState({
     lender_name: "",
     scheme_id: "pmmy-mudra",
@@ -123,16 +156,16 @@ export function LoanMonitorTab() {
     const emi = Number(form.monthly_emi);
     const tenure = Number(form.tenure_months);
 
-    if (!form.lender_name.trim()) return setError("Enter the bank or lender name.");
-    if (!(sanctioned > 0)) return setError("Sanctioned amount must be more than zero.");
+    if (!form.lender_name.trim()) return setError(t("errLender"));
+    if (!(sanctioned > 0)) return setError(t("errSanctioned"));
     if (!(outstanding >= 0) || outstanding > sanctioned) {
-      return setError("Outstanding principal has to sit between zero and the sanctioned amount.");
+      return setError(t("errOutstanding"));
     }
-    if (!(rate >= 0 && rate <= 100)) return setError("Interest rate has to be between 0 and 100.");
-    if (!(emi > 0)) return setError("Enter the monthly EMI.");
-    if (!(tenure > 0)) return setError("Tenure has to be at least one month.");
+    if (!(rate >= 0 && rate <= 100)) return setError(t("errRate"));
+    if (!(emi > 0)) return setError(t("errEmi"));
+    if (!(tenure > 0)) return setError(t("errTenure"));
     if (form.next_due_date < form.start_date) {
-      return setError("Next due date cannot fall before the loan start date.");
+      return setError(t("errDueBeforeStart"));
     }
 
     const scheme = SCHEMES.find((item) => item.id === form.scheme_id);
@@ -153,39 +186,95 @@ export function LoanMonitorTab() {
 
     setShowForm(false);
     await queryClient.invalidateQueries({ queryKey: ["loan-accounts", user.id] });
-    toast.success("Loan added");
+    toast.success(t("loanAdded"));
   }
 
   async function removeLoan(id: string) {
     await supabase.from("loan_accounts").delete().eq("id", id);
     await queryClient.invalidateQueries({ queryKey: ["loan-accounts", user?.id] });
-    toast.success("Loan removed");
+    toast.success(t("loanRemoved"));
+  }
+
+  /**
+   * "Explain this loan with AI": send the loan's facts with the translated
+   * question to the same chat endpoint the feed uses, and stream the answer
+   * under the table.
+   */
+  async function explainLoan(input: {
+    id: string;
+    lender: string;
+    outstanding: number;
+    rate: number;
+    emi: number;
+    nextDue: string;
+    clears: boolean;
+    months: number;
+  }) {
+    setAiBusyFor(input.id);
+    setAiErrorFor(null);
+    setAiAnswers((prev) => ({ ...prev, [input.id]: "" }));
+
+    const facts = [
+      `Lender: ${input.lender}`,
+      `Outstanding: ${formatINR(input.outstanding)}`,
+      `Interest: ${input.rate}% a year`,
+      `Monthly EMI: ${formatINR(input.emi)}`,
+      `Next due: ${input.nextDue}`,
+      input.clears
+        ? `Clears in about ${input.months} instalments.`
+        : "The EMI does not cover the monthly interest yet.",
+    ].join("; ");
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: `${t("loanQuestion")}\n\n${facts}` }],
+        }),
+      });
+
+      if (!response.ok || !response.body) throw new Error("no answer");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let answer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        answer += decoder.decode(value, { stream: true });
+        setAiAnswers((prev) => ({ ...prev, [input.id]: answer }));
+      }
+      if (!answer.trim()) throw new Error("empty answer");
+    } catch {
+      setAiErrorFor(input.id);
+    } finally {
+      setAiBusyFor(null);
+    }
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Loans you are repaying</h2>
-          <p className="text-sm text-muted-foreground">
-            Due dates, subsidy progress and what is left to pay.
-          </p>
+          <h2 className="text-lg font-semibold">{t("loansRepaying")}</h2>
+          <p className="text-sm text-muted-foreground">{t("loansRepayingSub")}</p>
         </div>
         <Button onClick={() => setShowForm((value) => !value)}>
           <Plus aria-hidden="true" className="size-4" />
-          Add loan
+          {t("addLoan")}
         </Button>
       </div>
 
       {loans.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <PortfolioTile label="Sanctioned" value={formatINR(portfolio.sanctioned)} />
-          <PortfolioTile label="Still owed" value={formatINR(portfolio.outstanding)} />
-          <PortfolioTile label="Leaves you each month" value={formatINR(portfolio.monthlyEmi)} />
+          <PortfolioTile label={t("sanctioned")} value={formatINR(portfolio.sanctioned)} />
+          <PortfolioTile label={t("stillOwed")} value={formatINR(portfolio.outstanding)} />
+          <PortfolioTile label={t("monthlyLeave")} value={formatINR(portfolio.monthlyEmi)} />
           <PortfolioTile
-            label="Nearest due date"
+            label={t("nearestDue")}
             value={portfolio.nearest ? formatDate(portfolio.nearest) : "—"}
-            hint={portfolio.nearest ? dueLabel(daysUntil(portfolio.nearest)) : undefined}
+            hint={portfolio.nearest ? dueLabel(daysUntil(portfolio.nearest), t) : undefined}
             urgent={portfolio.nearest ? daysUntil(portfolio.nearest) <= 7 : false}
           />
         </div>
@@ -193,16 +282,16 @@ export function LoanMonitorTab() {
 
       {showForm && (
         <Panel
-          title="Loan details"
-          description="Numbers from your sanction letter work best."
+          title={t("loanDetails")}
+          description={t("loanDetailsSub")}
           action={
             <Button variant="outline" size="sm" onClick={() => setShowForm(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
           }
         >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Field id="lender" label="Bank or lender">
+            <Field id="lender" label={t("bankLender")}>
               <Input
                 id="lender"
                 className="bg-muted"
@@ -212,7 +301,7 @@ export function LoanMonitorTab() {
             </Field>
 
             <div>
-              <Label htmlFor="monitor-scheme">Scheme</Label>
+              <Label htmlFor="monitor-scheme">{t("scheme")}</Label>
               <Select
                 value={form.scheme_id}
                 onValueChange={(value) => setForm({ ...form, scheme_id: value })}
@@ -232,24 +321,24 @@ export function LoanMonitorTab() {
 
             <MoneyField
               id="sanctioned"
-              label="Sanctioned amount"
+              label={t("sanctionedAmount")}
               value={form.sanctioned_amount}
               onChange={(value) => setForm({ ...form, sanctioned_amount: value })}
             />
             <MoneyField
               id="outstanding"
-              label="Remaining principal"
+              label={t("remainingPrincipal")}
               value={form.outstanding_principal}
               onChange={(value) => setForm({ ...form, outstanding_principal: value })}
             />
             <MoneyField
               id="emi"
-              label="Monthly EMI"
+              label={t("monthlyEmi")}
               value={form.monthly_emi}
               onChange={(value) => setForm({ ...form, monthly_emi: value })}
             />
 
-            <Field id="rate" label="Interest rate (% a year)">
+            <Field id="rate" label={t("interestRateYear")}>
               <Input
                 id="rate"
                 className="bg-muted tabular-nums"
@@ -264,7 +353,7 @@ export function LoanMonitorTab() {
               />
             </Field>
 
-            <Field id="tenure" label="Tenure (months)">
+            <Field id="tenure" label={t("tenureMonths")}>
               <Input
                 id="tenure"
                 className="bg-muted tabular-nums"
@@ -276,7 +365,7 @@ export function LoanMonitorTab() {
               />
             </Field>
 
-            <Field id="start-date" label="Loan start date">
+            <Field id="start-date" label={t("loanStartDate")}>
               <Input
                 id="start-date"
                 type="date"
@@ -286,7 +375,7 @@ export function LoanMonitorTab() {
               />
             </Field>
 
-            <Field id="due-date" label="Next due date">
+            <Field id="due-date" label={t("nextDueDate")}>
               <Input
                 id="due-date"
                 type="date"
@@ -297,7 +386,7 @@ export function LoanMonitorTab() {
             </Field>
 
             <div>
-              <Label htmlFor="subsidy">Subsidy status</Label>
+              <Label htmlFor="subsidy">{t("subsidyStatus")}</Label>
               <Select
                 value={form.subsidy_status}
                 onValueChange={(value) => setForm({ ...form, subsidy_status: value })}
@@ -308,7 +397,7 @@ export function LoanMonitorTab() {
                 <SelectContent>
                   {SUBSIDY_STATES.map((status) => (
                     <SelectItem key={status} value={status}>
-                      {status}
+                      {t(SUBSIDY_KEYS[status] ?? status)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -323,7 +412,7 @@ export function LoanMonitorTab() {
           )}
 
           <Button className="mt-5" onClick={() => void saveLoan()}>
-            Save loan
+            {t("saveLoan")}
           </Button>
         </Panel>
       )}
@@ -331,10 +420,9 @@ export function LoanMonitorTab() {
       {loans.length === 0 && !showForm ? (
         <div className="rounded-md border border-dashed py-14 text-center">
           <Landmark aria-hidden="true" className="mx-auto size-8 text-muted-foreground" />
-          <p className="mt-3 font-medium">Nothing being monitored yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add a sanctioned loan to follow its repayment schedule.
-          </p>
+          <p className="mt-3 font-medium">{t("nothingMonitored")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("nothingMonitoredSub")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("aiLoanUnavailable")}</p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -353,7 +441,8 @@ export function LoanMonitorTab() {
             const nextInterest = outstanding * (rate / 100 / 12);
             const dueDays = daysUntil(loan.next_due_date);
             const isOpen = expanded === loan.id;
-            const visible = isOpen ? rows : rows.slice(0, PREVIEW_ROWS);
+            const visible = isOpen ? rows : rows.slice(0, UPCOMING_ROWS);
+            const aiAnswer = aiAnswers[loan.id];
 
             return (
               <article key={loan.id} className="rounded-md border">
@@ -363,11 +452,13 @@ export function LoanMonitorTab() {
                     <p className="text-sm text-muted-foreground">{loan.scheme_name}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">Subsidy: {loan.subsidy_status}</Badge>
+                    <Badge variant="secondary">
+                      {t("subsidy")} {t(SUBSIDY_KEYS[loan.subsidy_status] ?? loan.subsidy_status)}
+                    </Badge>
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label={`Remove loan from ${loan.lender_name}`}
+                      aria-label={t("removeLoanAria", { lender: loan.lender_name })}
                       onClick={() => void removeLoan(loan.id)}
                     >
                       <Trash2 className="size-4" />
@@ -377,19 +468,19 @@ export function LoanMonitorTab() {
 
                 <div className="space-y-5 p-5">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Readout label="Sanctioned" value={formatINR(sanctioned)} />
-                    <Readout label="Remaining principal" value={formatINR(outstanding)} />
+                    <Readout label={t("sanctioned")} value={formatINR(sanctioned)} />
+                    <Readout label={t("remainingPrincipal")} value={formatINR(outstanding)} />
                     <Readout
-                      label="Interest next month"
+                      label={t("interestNextMonth")}
                       value={formatINR(nextInterest)}
-                      hint={`${rate}% a year`}
+                      hint={t("perYear", { rate })}
                     />
-                    <Readout label="Monthly EMI" value={formatINR(emi)} />
+                    <Readout label={t("monthlyEmi")} value={formatINR(emi)} />
                   </div>
 
                   <div>
                     <div className="mb-2 flex justify-between text-sm">
-                      <span>Repaid so far</span>
+                      <span>{t("repaidSoFar")}</span>
                       <span className="font-medium tabular-nums">{repaidPercent.toFixed(0)}%</span>
                     </div>
                     <Progress value={repaidPercent} />
@@ -399,9 +490,10 @@ export function LoanMonitorTab() {
                     <div className="flex items-start gap-2 rounded-md border border-destructive p-3 text-sm text-destructive">
                       <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                       <span>
-                        At {formatINR(emi)} a month the EMI does not cover the{" "}
-                        {formatINR(nextInterest)} of monthly interest, so the balance would never
-                        fall. Check the EMI with your lender.
+                        {t("emiWarning", {
+                          emi: formatINR(emi),
+                          interest: formatINR(nextInterest),
+                        })}
                       </span>
                     </div>
                   )}
@@ -415,35 +507,36 @@ export function LoanMonitorTab() {
                   >
                     <CalendarClock aria-hidden="true" className="size-4 shrink-0" />
                     <span>
-                      <strong>Next EMI:</strong> {formatDate(loan.next_due_date)} ·{" "}
-                      {dueLabel(dueDays)}
+                      <strong>{t("nextEmi")}</strong> {formatDate(loan.next_due_date)} ·{" "}
+                      {dueLabel(dueDays, t)}
                     </span>
                   </div>
 
                   {rows.length > 0 && (
                     <div>
+                      <h4 className="mb-2 text-sm font-semibold">{t("upcomingEmis")}</h4>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                          <caption className="sr-only">Upcoming repayment schedule</caption>
+                          <caption className="sr-only">{t("instalmentTableCaption")}</caption>
                           <thead className="bg-muted text-left">
                             <tr>
                               <th scope="col" className="p-3 font-medium">
                                 #
                               </th>
                               <th scope="col" className="p-3 font-medium">
-                                Due
+                                {t("colDue")}
                               </th>
                               <th scope="col" className="p-3 font-medium">
-                                EMI
+                                {t("colEmi")}
                               </th>
                               <th scope="col" className="p-3 font-medium">
-                                Interest
+                                {t("colInterest")}
                               </th>
                               <th scope="col" className="p-3 font-medium">
-                                Principal
+                                {t("colPrincipal")}
                               </th>
                               <th scope="col" className="p-3 font-medium">
-                                Balance
+                                {t("colBalance")}
                               </th>
                             </tr>
                           </thead>
@@ -465,10 +558,13 @@ export function LoanMonitorTab() {
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs text-muted-foreground">
                           {clears
-                            ? `Clears in ${rows.length} more instalment${rows.length === 1 ? "" : "s"}.`
-                            : `Showing the next ${visible.length} instalments.`}
+                            ? t("clearsIn", {
+                                n: rows.length,
+                                s: rows.length === 1 ? "" : "s",
+                              })
+                            : null}
                         </p>
-                        {rows.length > PREVIEW_ROWS && (
+                        {rows.length > UPCOMING_ROWS && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -479,12 +575,53 @@ export function LoanMonitorTab() {
                               aria-hidden="true"
                               className={isOpen ? "size-4 rotate-180" : "size-4"}
                             />
-                            {isOpen ? "Show less" : `All ${rows.length} instalments`}
+                            {isOpen ? t("showFewer") : t("showAllEmis", { n: rows.length })}
                           </Button>
                         )}
                       </div>
                     </div>
                   )}
+
+                  {/* Explain this loan with AI: streamed, in the chosen language. */}
+                  <div className="rounded-md border bg-secondary/60 p-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={aiBusyFor === loan.id}
+                      onClick={() =>
+                        void explainLoan({
+                          id: loan.id,
+                          lender: loan.lender_name,
+                          outstanding,
+                          rate,
+                          emi,
+                          nextDue: formatDate(loan.next_due_date),
+                          clears,
+                          months: rows.length,
+                        })
+                      }
+                    >
+                      <Sparkles aria-hidden="true" className="size-4" />
+                      {t("aiExplainLoan")}
+                    </Button>
+
+                    {aiBusyFor === loan.id && (
+                      <p className="mt-2 text-xs text-muted-foreground">{t("aiExplaining")}</p>
+                    )}
+
+                    {aiAnswer ? (
+                      <div className="mt-3 rounded-md border bg-background p-3">
+                        <p className="text-sm font-medium">{t("aiLoanIntro")}</p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{aiAnswer}</p>
+                      </div>
+                    ) : null}
+
+                    {aiErrorFor === loan.id && (
+                      <p role="alert" className="mt-2 text-xs font-medium text-destructive">
+                        {t("aiLoanFailed")}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </article>
             );
@@ -492,17 +629,9 @@ export function LoanMonitorTab() {
         </div>
       )}
 
-      <p className="text-xs leading-5 text-muted-foreground">
-        Projections use the rate you entered. Match them against the lender's statement.
-      </p>
+      <p className="text-xs leading-5 text-muted-foreground">{t("projectionNote")}</p>
     </div>
   );
-}
-
-function dueLabel(days: number): string {
-  if (days < 0) return `overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"}`;
-  if (days === 0) return "due today";
-  return `${days} day${days === 1 ? "" : "s"} to go`;
 }
 
 function PortfolioTile({

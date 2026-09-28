@@ -1,14 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import {
-  Calculator,
-  LayoutDashboard,
-  LogOut,
-  Map,
-  MessageCircle,
-  Newspaper,
-  Settings,
-  UserRound,
-} from "lucide-react";
+import { Calculator, LogOut, Map, Newspaper, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "./BrandLogo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -17,23 +8,17 @@ import { useLanguage } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
+/**
+ * Sahiti has three destinations after sign-in: the Live feed (home, which
+ * holds Sahiti AI as a tab), the Risk map, and Business calculations. Every
+ * other path still exists but is reached from inside these pages, so the nav
+ * never offers two ways into the same feature.
+ */
 const links = [
-  { to: "/dashboard" as const, key: "dashboard", icon: LayoutDashboard },
-  { to: "/feed" as const, key: "feed", icon: Newspaper },
+  { to: "/dashboard" as const, key: "feed", icon: Newspaper },
   { to: "/heatmap" as const, key: "heatmap", icon: Map },
   { to: "/calculations" as const, key: "calculations", icon: Calculator },
-  { to: "/assistant" as const, key: "assistant", icon: MessageCircle },
-  { to: "/profile" as const, key: "profile", icon: UserRound },
-  { to: "/settings" as const, key: "settings", icon: Settings },
 ];
-
-/** Mobile bar mirrors the desktop nav; labels come from i18n (BUG-08). */
-const mobileLinks = [
-  { to: "/feed" as const, key: "feed", icon: Newspaper },
-  { to: "/heatmap" as const, key: "heatmap", icon: Map },
-  { to: "/calculations" as const, key: "calculations", icon: Calculator },
-  { to: "/assistant" as const, key: "assistant", icon: MessageCircle },
-] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
@@ -112,8 +97,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="sahiti-mobile-nav fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(24_37_58_/_0.06)] backdrop-blur lg:hidden"
         aria-label="Primary mobile navigation"
       >
-        <div className="mx-auto grid h-16 max-w-lg grid-cols-4">
-          {mobileLinks.map((link) => {
+        <div className="mx-auto grid h-16 max-w-lg grid-cols-3">
+          {links.map((link) => {
             const active = pathname === link.to || pathname.startsWith(`${link.to}/`);
             return (
               <Link

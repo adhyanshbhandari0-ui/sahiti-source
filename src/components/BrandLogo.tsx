@@ -1,4 +1,5 @@
 import emblemUrl from "@/assets/sahiti-official-emblem.png";
+import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function BrandLogo({
@@ -11,6 +12,8 @@ export function BrandLogo({
   invert?: boolean;
   hideSubtitle?: boolean;
 }) {
+  const { t } = useLanguage();
+
   return (
     <span className="inline-flex items-center gap-2" aria-label="Sahiti">
       <img
@@ -39,7 +42,7 @@ export function BrandLogo({
               invert ? "text-white/75" : "text-muted-foreground",
             )}
           >
-            By Team Sahiti
+            {t("brandByTeam")}
           </span>
         )}
       </span>

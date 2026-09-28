@@ -43,20 +43,14 @@ function Settings() {
 
   return (
     <>
-      <PageHeader
-        title={t("settings")}
-        description="Set your preferred language and review how your session is protected."
-      />
+      <PageHeader title={t("settings")} description={t("settingsDescription")} />
 
       <div className="max-w-2xl space-y-8">
         <section className="rounded-md border p-5">
-          <h2 className="text-base font-semibold">Language</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Navigation and labels switch immediately. Posts and assistant replies stay in the
-            language they were written in.
-          </p>
+          <h2 className="text-base font-semibold">{t("language")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("settingsLanguageDesc")}</p>
           <div className="mt-4 max-w-xs">
-            <Label htmlFor="locale">App language</Label>
+            <Label htmlFor="locale">{t("settingsAppLanguage")}</Label>
             <Select value={locale} onValueChange={(value) => void changeLocale(value as Locale)}>
               <SelectTrigger id="locale" className="mt-2">
                 <SelectValue />
@@ -73,23 +67,21 @@ function Settings() {
         </section>
 
         <section className="rounded-md border p-5">
-          <h2 className="text-base font-semibold">Session security</h2>
+          <h2 className="text-base font-semibold">{t("settingsSecurityTitle")}</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-            <li>You are signed out automatically after 30 minutes without activity.</li>
-            <li>
-              Your calculations, photos and assistant conversations are private to this account.
-            </li>
-            <li>
-              Never share your password, and avoid entering bank or identity numbers anywhere.
-            </li>
+            <li>{t("settingsSecurity1")}</li>
+            <li>{t("settingsSecurity2")}</li>
+            <li>{t("settingsSecurity3")}</li>
           </ul>
         </section>
 
         <section className="rounded-md border p-5">
-          <h2 className="text-base font-semibold">Account</h2>
+          <h2 className="text-base font-semibold">{t("settingsAccountTitle")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Signed in since{" "}
-            {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString("en-IN") : "now"}
+            {t("settingsSignedInSince")}{" "}
+            {user?.last_sign_in_at
+              ? new Date(user.last_sign_in_at).toLocaleString(locale)
+              : t("settingsNow")}
             .
           </p>
           <Button

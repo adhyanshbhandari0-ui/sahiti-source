@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/profile")({
@@ -33,6 +34,7 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 function Profile() {
   const { user } = useSession();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     display_name: "",
@@ -102,11 +104,11 @@ function Profile() {
   async function save() {
     setError("");
     if (form.display_name.trim().length < 3 || form.display_name.trim().length > 100) {
-      setError("Name must be between 3 and 100 characters");
+      setError(t("profileErrName"));
       return;
     }
     if (form.pincode && !/^\d{6}$/.test(form.pincode)) {
-      setError("Pincode must be 6 digits");
+      setError(t("profileErrPincode"));
       return;
     }
     const { error: updateError } = await supabase
@@ -122,7 +124,7 @@ function Profile() {
       return;
     }
     await queryClient.invalidateQueries({ queryKey: ["profile-page", user?.id] });
-    toast.success("Profile saved");
+    toast.success(t("profileSavedToast"));
   }
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
@@ -130,11 +132,11 @@ function Profile() {
     event.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Choose an image file");
+      toast.error(t("profileErrImage"));
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      toast.error("Images must be 5 MB or smaller");
+      toast.error(t("profileErrSize"));
       return;
     }
     setUploading(true);
@@ -150,7 +152,7 @@ function Profile() {
     await supabase.from("business_images").insert({ user_id: user!.id, storage_path: path });
     setUploading(false);
     await queryClient.invalidateQueries({ queryKey: ["profile-page", user?.id] });
-    toast.success("Photo uploaded");
+    toast.success(t("profilePhotoUploaded"));
   }
 
   async function removeImage(id: string, path: string) {
@@ -169,60 +171,57 @@ function Profile() {
 
   return (
     <>
-      <PageHeader
-        title="Business profile"
-        description="Your business details help personalise the dashboard. Photos are stored privately and are visible only to you."
-      />
+      <PageHeader title={t("profileTitle")} description={t("profileDescription")} />
 
       <div className="grid gap-8 lg:grid-cols-2">
         <section className="rounded-md border p-5">
-          <h2 className="text-base font-semibold">Business details</h2>
+          <h2 className="text-base font-semibold">{t("profileDetailsTitle")}</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field
               id="display_name"
-              label="Your name"
+              label={t("profileYourName")}
               value={form.display_name}
               onChange={(v) => setForm({ ...form, display_name: v })}
             />
             <Field
               id="business_name"
-              label="Business name"
+              label={t("profileBusinessName")}
               value={form.business_name}
               onChange={(v) => setForm({ ...form, business_name: v })}
             />
             <Field
               id="category"
-              label="Category"
+              label={t("profileCategory")}
               value={form.category}
               onChange={(v) => setForm({ ...form, category: v })}
             />
             <Field
               id="monthly_revenue_range"
-              label="Monthly revenue range"
+              label={t("profileRevenueRange")}
               value={form.monthly_revenue_range}
               onChange={(v) => setForm({ ...form, monthly_revenue_range: v })}
             />
             <Field
               id="block"
-              label="Block or area"
+              label={t("profileBlock")}
               value={form.block}
               onChange={(v) => setForm({ ...form, block: v })}
             />
             <Field
               id="district"
-              label="District"
+              label={t("profileDistrict")}
               value={form.district}
               onChange={(v) => setForm({ ...form, district: v })}
             />
             <Field
               id="pincode"
-              label="Pincode"
+              label={t("profilePincode")}
               value={form.pincode}
               onChange={(v) => setForm({ ...form, pincode: v.replace(/[^\d]/g, "").slice(0, 6) })}
             />
             <Field
               id="employees"
-              label="Employees"
+              label={t("profileEmployees")}
               value={String(form.employees)}
               onChange={(v) =>
                 setForm({ ...form, employees: Number(v.replace(/[^\d]/g, "")) || 0 })
@@ -230,19 +229,19 @@ function Profile() {
             />
             <Field
               id="whatsapp"
-              label="WhatsApp (optional)"
+              label={t("profileWhatsapp")}
               value={form.whatsapp}
               onChange={(v) => setForm({ ...form, whatsapp: v })}
             />
             <Field
               id="email"
-              label="Email (optional)"
+              label={t("profileEmail")}
               value={form.email}
               onChange={(v) => setForm({ ...form, email: v })}
             />
           </div>
           <div className="mt-4">
-            <Label htmlFor="description">What your business does</Label>
+            <Label htmlFor="description">{t("profileWhatDoes")}</Label>
             <Textarea
               id="description"
               className="mt-2 bg-muted"
@@ -257,22 +256,20 @@ function Profile() {
             </p>
           )}
           <Button className="mt-4" onClick={() => void save()}>
-            Save profile
+            {t("profileSave")}
           </Button>
         </section>
 
         <div className="space-y-8">
           <section className="rounded-md border p-5">
-            <h2 className="text-base font-semibold">Business photographs</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Up to 5 MB per image. Stored privately in your own folder.
-            </p>
+            <h2 className="text-base font-semibold">{t("profilePhotosTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("profilePhotosHint")}</p>
             <Label
               htmlFor="photo"
               className="mt-4 flex cursor-pointer items-center justify-center gap-2 border border-dashed p-5 text-sm font-medium"
             >
               <Upload aria-hidden="true" className="size-4" />
-              {uploading ? "Uploading…" : "Choose a photo"}
+              {uploading ? t("profileUploading") : t("profileChoosePhoto")}
             </Label>
             <input
               id="photo"
@@ -286,14 +283,14 @@ function Profile() {
                 <li key={image.id} className="relative">
                   <img
                     src={image.url}
-                    alt={image.caption || "Business photograph"}
+                    alt={image.caption || t("profilePhotoAlt")}
                     className="h-32 w-full object-cover"
                   />
                   <Button
                     className="absolute right-1 top-1"
                     size="icon"
                     variant="secondary"
-                    aria-label="Delete photo"
+                    aria-label={t("profileDeletePhoto")}
                     onClick={() => void removeImage(image.id, image.storage_path)}
                   >
                     <Trash2 className="size-4" />
@@ -302,21 +299,21 @@ function Profile() {
               ))}
             </ul>
             {(data?.images ?? []).length === 0 && (
-              <p className="mt-3 text-sm text-muted-foreground">No photographs uploaded yet.</p>
+              <p className="mt-3 text-sm text-muted-foreground">{t("profileNoPhotos")}</p>
             )}
           </section>
 
           <section className="rounded-md border p-5">
-            <h2 className="text-base font-semibold">Milestones</h2>
+            <h2 className="text-base font-semibold">{t("profileMilestonesTitle")}</h2>
             <div className="mt-3 flex gap-2">
               <Input
                 className="bg-muted"
-                aria-label="Milestone"
+                aria-label={t("profileMilestone")}
                 value={milestone}
                 onChange={(event) => setMilestone(event.target.value)}
-                placeholder="First 100 customers"
+                placeholder={t("profileMilestonePlaceholder")}
               />
-              <Button onClick={() => void addMilestone()}>Add</Button>
+              <Button onClick={() => void addMilestone()}>{t("profileAdd")}</Button>
             </div>
             <ul className="mt-4 space-y-2 text-sm">
               {(data?.milestones ?? []).map((item) => (

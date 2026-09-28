@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
 
 export const Route = createFileRoute("/auth")({
@@ -27,26 +28,25 @@ export const Route = createFileRoute("/auth")({
   component: Auth,
 });
 
-const passwordSchema = z
-  .string()
-  .min(8, "Use at least 8 characters")
-  .regex(/[A-Z]/, "Add one uppercase letter")
-  .regex(/[0-9]/, "Add one number")
-  .regex(/[^A-Za-z0-9]/, "Add one special character");
-
-const phoneSchema = z
-  .string()
-  .regex(/^\+91[6-9]\d{9}$/, "Use +91 followed by a valid 10-digit mobile number");
-
-const phoneEmail = (phone: string) => `${phone.replace(/\D/g, "")}@phone.sahiti.demo`;
-
 function Auth() {
   const navigate = useNavigate();
   const { session } = useSession();
+  const { t } = useLanguage();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ name: "", phone: "+91", password: "" });
+
+  const passwordSchema = z
+    .string()
+    .min(8, t("authPwLength"))
+    .regex(/[A-Z]/, t("authPwUppercase"))
+    .regex(/[0-9]/, t("authPwNumber"))
+    .regex(/[^A-Za-z0-9]/, t("authPwSpecial"));
+
+  const phoneSchema = z.string().regex(/^\+91[6-9]\d{9}$/, t("authPhoneFormat"));
+
+  const phoneEmail = (phone: string) => `${phone.replace(/\D/g, "")}@phone.sahiti.demo`;
 
   useEffect(() => {
     if (session) void navigate({ to: "/dashboard" });
@@ -58,16 +58,16 @@ function Auth() {
 
     const phone = phoneSchema.safeParse(form.phone);
     if (!phone.success) {
-      setError(phone.error.issues[0]?.message ?? "Check your mobile number");
+      setError(phone.error.issues[0]?.message ?? t("authErrPhone"));
       return;
     }
     const password = passwordSchema.safeParse(form.password);
     if (!password.success) {
-      setError(password.error.issues[0]?.message ?? "Check your password");
+      setError(password.error.issues[0]?.message ?? t("authErrPassword"));
       return;
     }
-    if (mode === "signup" && form.name.trim().length < 3) {
-      setError("Name must be between 3 and 100 characters");
+    if (mode === "signup" && (form.name.trim().length < 3 || form.name.trim().length > 100)) {
+      setError(t("authErrName"));
       return;
     }
 
@@ -79,7 +79,7 @@ function Auth() {
           password: form.password,
         });
         if (signUpError) throw signUpError;
-        if (!data.user) throw new Error("Account could not be created");
+        if (!data.user) throw new Error(t("authErrAccount"));
         const { error: profileError } = await supabase.from("profiles").insert({
           id: data.user.id,
           phone: form.phone,
@@ -95,7 +95,7 @@ function Auth() {
       }
       await navigate({ to: "/dashboard" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not continue. Try again.");
+      setError(err instanceof Error ? err.message : t("authErrGeneric"));
     } finally {
       setBusy(false);
     }
@@ -106,7 +106,7 @@ function Auth() {
       <section className="relative hidden overflow-hidden lg:block">
         <img
           src={authPortrait}
-          alt="Glass jars of Indian masala spices on shop shelves"
+          alt={t("authPortraitAlt")}
           className="absolute inset-0 size-full object-cover"
         />
         <div className="absolute inset-0 bg-primary/80" />
@@ -115,14 +115,11 @@ function Auth() {
           <div>
             <p className="sahiti-kicker text-saffron">Sahiti</p>
             <h1 className="mt-4 max-w-lg font-display text-5xl font-semibold leading-[1.08] tracking-tight">
-              Clearer decisions. Local context.
+              {t("authHeroTitle")}
             </h1>
-            <p className="mt-6 max-w-md text-base leading-8 text-white/85">
-              Plan a loan, understand documents, study local risks and track business progress in
-              one place.
-            </p>
+            <p className="mt-6 max-w-md text-base leading-8 text-white/85">{t("authHeroBody")}</p>
           </div>
-          <p className="text-sm text-white/70">Sahiti prototype for Smart India Hackathon 2026</p>
+          <p className="text-sm text-white/70">{t("authPrototypeLine")}</p>
         </div>
       </section>
 
@@ -133,16 +130,16 @@ function Auth() {
             <BrandLogo />
           </div>
           <p className="text-sm font-semibold text-primary">
-            {mode === "login" ? "Welcome back" : "Create your account"}
+            {mode === "login" ? t("authWelcomeBack") : t("authCreateTitle")}
           </p>
           <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-[2rem]">
-            {mode === "login" ? "Sign in to Sahiti" : "Start planning your business"}
+            {mode === "login" ? t("authSignInTitle") : t("authStartPlanning")}
           </h2>
 
           <form onSubmit={submit} className="mt-8 space-y-5" noValidate>
             {mode === "signup" && (
               <div>
-                <Label htmlFor="name">Full name</Label>
+                <Label htmlFor="name">{t("authFullName")}</Label>
                 <Input
                   id="name"
                   className="mt-2 h-11 bg-muted"
@@ -153,7 +150,7 @@ function Auth() {
               </div>
             )}
             <div>
-              <Label htmlFor="phone">Mobile number</Label>
+              <Label htmlFor="phone">{t("authMobileNumber")}</Label>
               <Input
                 id="phone"
                 className="mt-2 h-11 bg-muted"
@@ -162,12 +159,10 @@ function Auth() {
                 inputMode="tel"
                 autoComplete="tel"
               />
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Format: +91 followed by your 10-digit number.
-              </p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{t("authPhoneHint")}</p>
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("authPassword")}</Label>
               <Input
                 id="password"
                 className="mt-2 h-11 bg-muted"
@@ -177,9 +172,7 @@ function Auth() {
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
               />
               {mode === "signup" && (
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  8 or more characters with an uppercase letter, a number and a special character.
-                </p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{t("authPwHint")}</p>
               )}
             </div>
             {error && (
@@ -188,7 +181,11 @@ function Auth() {
               </p>
             )}
             <Button className="h-12 w-full" disabled={busy}>
-              {busy ? "Please wait" : mode === "login" ? "Sign in" : "Create account"}
+              {busy
+                ? t("authPleaseWait")
+                : mode === "login"
+                  ? t("authSignIn")
+                  : t("authCreateAccount")}
             </Button>
           </form>
 
@@ -200,16 +197,10 @@ function Auth() {
               setError("");
             }}
           >
-            {mode === "login"
-              ? "New to Sahiti? Create an account"
-              : "Already have an account? Sign in"}
+            {mode === "login" ? t("authNewToSahiti") : t("authHaveAccount")}
           </button>
 
-          <p className="mt-8 text-xs leading-5 text-muted-foreground">
-            This prototype signs you in with a mobile number and password. A production financial
-            service should use verified mobile authentication. Sessions end after 30 minutes of
-            inactivity.
-          </p>
+          <p className="mt-8 text-xs leading-5 text-muted-foreground">{t("authDisclaimer")}</p>
         </div>
       </section>
     </main>

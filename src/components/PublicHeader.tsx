@@ -1,17 +1,21 @@
 import { Link } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "@/lib/i18n";
 import { BrandLogo } from "./BrandLogo";
 import { Button } from "./ui/button";
 
-const links = [
-  { to: "/about" as const, label: "About" },
-  { to: "/privacy" as const, label: "Privacy" },
-  { to: "/terms" as const, label: "Terms" },
-];
+const linkTargets = ["/about", "/privacy", "/terms"] as const;
 
 export function PublicHeader() {
   const [open, setOpen] = useState(false);
+  const { t } = useLanguage();
+
+  const links = [
+    { to: linkTargets[0], label: t("navAbout") },
+    { to: linkTargets[1], label: t("navPrivacy") },
+    { to: linkTargets[2], label: t("navTerms") },
+  ];
 
   return (
     <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-[0_8px_28px_rgb(24_37_58_/_0.18)]">
@@ -38,7 +42,7 @@ export function PublicHeader() {
           variant="ghost"
           size="icon"
           aria-expanded={open}
-          aria-label={open ? "Close menu" : "Open menu"}
+          aria-label={open ? t("navCloseMenu") : t("navOpenMenu")}
           onClick={() => setOpen((value) => !value)}
         >
           {open ? <X /> : <Menu />}
@@ -64,7 +68,7 @@ export function PublicHeader() {
               asChild
               className="bg-saffron font-semibold text-foreground hover:bg-saffron/90"
             >
-              <Link to="/auth">Get Started</Link>
+              <Link to="/auth">{t("getStarted")}</Link>
             </Button>
           </div>
         </nav>

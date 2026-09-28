@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { findSchemes, formatSchemeAmount, SCHEME_SECTORS, type SchemeStage } from "@/data/schemes";
+import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { MoneyField } from "./shared";
 
@@ -32,6 +33,7 @@ export function SchemeFinder({
   defaultSector?: string;
   defaultAmount?: string;
 }) {
+  const { t } = useLanguage();
   const [text, setText] = useState("");
   const [sector, setSector] = useState(defaultSector ?? "Retail");
   const [amount, setAmount] = useState(defaultAmount ?? "");
@@ -68,21 +70,21 @@ export function SchemeFinder({
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-[1fr_180px_180px_180px]">
         <div>
-          <Label htmlFor="scheme-search">Search schemes</Label>
+          <Label htmlFor="scheme-search">{t("finderSearch")}</Label>
           <div className="mt-2 flex items-center gap-2 rounded-md border bg-muted px-3">
             <Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
             <Input
               id="scheme-search"
               className="border-0 bg-transparent px-0 shadow-none focus-visible:outline-none"
               value={text}
-              placeholder="Mudra, artisan, street vendor, machinery…"
+              placeholder={t("finderSearchPlaceholder")}
               onChange={(event) => setText(event.target.value)}
             />
           </div>
         </div>
 
         <div>
-          <Label htmlFor="finder-sector">Business</Label>
+          <Label htmlFor="finder-sector">{t("finderBusiness")}</Label>
           <Select value={sector} onValueChange={setSector}>
             <SelectTrigger id="finder-sector" className="mt-2">
               <SelectValue />
@@ -90,7 +92,7 @@ export function SchemeFinder({
             <SelectContent>
               {SCHEME_SECTORS.map((item) => (
                 <SelectItem key={item} value={item}>
-                  {item}
+                  {t(`sector.${item}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -99,22 +101,22 @@ export function SchemeFinder({
 
         <MoneyField
           id="finder-amount"
-          label="Amount needed"
+          label={t("finderAmountNeeded")}
           value={amount}
           onChange={setAmount}
-          hint="Optional"
+          hint={t("finderOptional")}
         />
 
         <div>
-          <Label htmlFor="finder-stage">Stage</Label>
+          <Label htmlFor="finder-stage">{t("finderStage")}</Label>
           <Select value={stage} onValueChange={(value) => setStage(value as SchemeStage)}>
             <SelectTrigger id="finder-stage" className="mt-2">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="new">Starting fresh</SelectItem>
-              <SelectItem value="existing">Already trading</SelectItem>
-              <SelectItem value="either">Both</SelectItem>
+              <SelectItem value="new">{t("finderStageNew")}</SelectItem>
+              <SelectItem value="existing">{t("finderStageExisting")}</SelectItem>
+              <SelectItem value="either">{t("finderStageBoth")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -122,13 +124,14 @@ export function SchemeFinder({
 
       <div>
         <p className="text-sm text-muted-foreground">
-          {matches.length} programme{matches.length === 1 ? "" : "s"} match
-          {matches.length === 0 ? " those filters" : ", best fit first"}
+          {matches.length === 0
+            ? t("finderMatchedFilters")
+            : t("finderMatched", { count: matches.length })}
         </p>
 
         {matches.length === 0 ? (
           <p className="mt-3 rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Nothing matched. Try clearing the search box, or pick a different business.
+            {t("finderNothingMatched")}
           </p>
         ) : (
           <ul className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -146,7 +149,7 @@ export function SchemeFinder({
                     <h3 className="text-sm font-semibold">{match.scheme.name}</h3>
                     {match.amountFits && (
                       <span className="rounded-sm bg-success/10 px-1.5 py-0.5 text-[11px] font-medium text-success">
-                        Amount fits
+                        {t("finderAmountFits")}
                       </span>
                     )}
                   </div>
@@ -176,7 +179,7 @@ export function SchemeFinder({
                       variant={selected ? "default" : "outline"}
                       onClick={() => onChoose(match.scheme.id)}
                     >
-                      {selected ? "Selected" : "Choose this"}
+                      {selected ? t("finderSelected") : t("finderChoose")}
                     </Button>
                     <a
                       href={match.scheme.portalUrl}
@@ -184,7 +187,7 @@ export function SchemeFinder({
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                     >
-                      Portal
+                      {t("finderPortal")}
                       <ExternalLink aria-hidden="true" className="size-3" />
                     </a>
                   </div>
@@ -202,7 +205,7 @@ export function SchemeFinder({
             aria-expanded={showAll}
             onClick={() => setShowAll((value) => !value)}
           >
-            {showAll ? "Show fewer" : `Show all ${matches.length}`}
+            {showAll ? t("showFewer") : t("showAllN", { count: matches.length })}
           </Button>
         )}
       </div>

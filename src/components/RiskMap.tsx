@@ -1,7 +1,6 @@
 import L from "leaflet";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Circle,
   CircleMarker,
   MapContainer,
   Marker,
@@ -15,14 +14,14 @@ import type { UserPosition } from "@/hooks/useGeolocation";
 import {
   SHOP_CATEGORY_COLORS,
   formatShopAddress,
-  formatShopCoordinates,
   type Shop,
   type ShopCategory,
 } from "@/data/shops";
 import { shopGoogleDirectionsUrl, shopGoogleMapsUrl } from "@/lib/googleMaps";
-import { dominantCategory, groupShops, type ShopFocus, type ShopGroup } from "@/lib/shopClusters";
+import { useLanguage } from "@/lib/i18n";
+import { dominantCategory, groupShops, type ShopGroup } from "@/lib/shopClusters";
 
-/** A Sahiti research zone. These are area-level and carry opportunity scores. */
+/** A Sahiti safe zone. These are area-level and carry opportunity scores. */
 export type RiskPlace = {
   id: string;
   name: string;
@@ -46,21 +45,21 @@ export type RiskPlace = {
 const BASEMAPS = [
   {
     id: "streets",
-    label: "Streets",
+    labelKey: "basemapStreets",
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   {
     id: "minimal",
-    label: "Minimal",
+    labelKey: "basemapMinimal",
     url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
   },
   {
     id: "satellite",
-    label: "Satellite",
+    labelKey: "basemapSatellite",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics",
   },
@@ -71,10 +70,34 @@ type BasemapId = (typeof BASEMAPS)[number]["id"];
 /** Farthest zoom the basemaps are worth requesting; beyond this they grey out. */
 const MAX_ZOOM = 19;
 
-function colorFor(score: number) {
-  if (score >= 7) return "#15803D";
-  if (score >= 5) return "#B45309";
-  return "#B91C1C";
+/**
+ * The three big safe-zone verdicts. A zone is bucketed by its opportunity
+ * score into exactly one of three colours, so the map reads at a glance
+ * instead of showing a scatter of small circles.
+ */
+const ZONE_BUCKETS = [
+  {
+    id: "green",
+    color: "#15803D",
+    radius: 110,
+    minScore: 7,
+  },
+  {
+    id: "amber",
+    color: "#B45309",
+    radius: 100,
+    minScore: 5,
+  },
+  {
+    id: "red",
+    color: "#B91C1C",
+    radius: 95,
+    minScore: 0,
+  },
+] as const;
+
+function bucketFor(score: number) {
+  return ZONE_BUCKETS.find((bucket) => score >= bucket.minScore) ?? ZONE_BUCKETS[2]!;
 }
 
 /** Risk colours from the SIH corridor gather, used to tint corridor pins. */
@@ -156,42 +179,7 @@ function RecenterOnUser({ position, token }: { position: UserPosition | null; to
   return null;
 }
 
-/**
- * Moves the map to a chosen locality. Keyed on the token, not the focus, so
- * panning after the jump is not undone on the next render.
- */
-function FocusOnArea({ focus, token }: { focus: ShopFocus | null; token: number }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!focus || token === 0) return;
-    map.setView([focus.lat, focus.lng], focus.zoom, { animate: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, map]);
-
-  return null;
-}
-
-/** Sky-blue candidate marker, matching the SIH simulator's picked location. */
-export type MapCandidate = { lat: number; lng: number };
-
-/** Corridor anchor hubs, straight from the SIH gather. */
-const CORRIDOR_HUBS = [
-  {
-    name: "ADYPU Knowledge City",
-    note: "15,000+ student base",
-    lat: 18.6226,
-    lng: 73.9063,
-  },
-  {
-    name: "Lohegaon Central Junction",
-    note: "Major transit & market core",
-    lat: 18.5955,
-    lng: 73.9268,
-  },
-] as const;
-
-/** Forwards map clicks so the page can run its feasibility simulator. */
+/** Forwards map clicks so the page can run its feasibility rating. */
 function ClickCatcher({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   useMapEvents({
     click(event) {
@@ -203,6 +191,7 @@ function ClickCatcher({ onPick }: { onPick: (lat: number, lng: number) => void }
 
 /** Everything a shop popup shows. Factual OpenStreetMap fields only. */
 function ShopPopupBody({ shop }: { shop: Shop }) {
+  const { t } = useLanguage();
   const corridor = shop.corridor;
   return (
     <div className="sahiti-popup">
@@ -215,25 +204,27 @@ function ShopPopupBody({ shop }: { shop: Shop }) {
           className="sahiti-popup__chip"
           style={{ background: SHOP_CATEGORY_COLORS[shop.category] }}
         >
-          {shop.category}
+          {t(`cat.${shop.category}`)}
         </span>
         {shop.locality}
       </p>
       {shop.rating !== undefined ? (
         <p className="sahiti-popup__line">
           ★ {shop.rating.toFixed(1)}
-          {shop.reviewCount !== undefined ? ` (${shop.reviewCount} reviews)` : ""}
+          {shop.reviewCount !== undefined ? ` (${t("reviews", { n: shop.reviewCount })})` : ""}
         </p>
       ) : null}
       <p className="sahiti-popup__line">{formatShopAddress(shop)}</p>
       {corridor?.distToAdypuKm !== undefined || corridor?.distToLohegaonKm !== undefined ? (
         <p className="sahiti-popup__line">
-          {corridor?.distToAdypuKm !== undefined ? `${corridor.distToAdypuKm} km to ADYPU` : null}
+          {corridor?.distToAdypuKm !== undefined
+            ? t("kmToAdypu", { km: corridor.distToAdypuKm })
+            : null}
           {corridor?.distToAdypuKm !== undefined && corridor?.distToLohegaonKm !== undefined
             ? " · "
             : null}
           {corridor?.distToLohegaonKm !== undefined
-            ? `${corridor.distToLohegaonKm} km to Lohegaon`
+            ? t("kmToLohegaon", { km: corridor.distToLohegaonKm })
             : null}
         </p>
       ) : null}
@@ -244,49 +235,48 @@ function ShopPopupBody({ shop }: { shop: Shop }) {
       ) : null}
       {shop.openingHours ? <p className="sahiti-popup__line">{shop.openingHours}</p> : null}
       {shop.payments && shop.payments.length > 0 ? (
-        <p className="sahiti-popup__line">Accepts {shop.payments.join(", ")}</p>
+        <p className="sahiti-popup__line">{t("accepts", { list: shop.payments.join(", ") })}</p>
       ) : null}
       {shop.riskLevel ? (
         <p className="sahiti-popup__line">
-          Competition:{" "}
+          {t("competition")}{" "}
           {shop.riskLevel === "low"
-            ? "Low (higher opportunity)"
+            ? t("competitionLow")
             : shop.riskLevel === "high"
-              ? "High (saturated)"
-              : "Moderate"}
+              ? t("competitionHigh")
+              : t("competitionModerate")}
           {shop.competitorsNearby !== undefined
-            ? ` · ${shop.competitorsNearby} similar within 400 m`
+            ? ` · ${t("similarNearby", { n: shop.competitorsNearby })}`
             : ""}
         </p>
       ) : null}
       {shop.riskDescription ? <p className="sahiti-popup__line">{shop.riskDescription}</p> : null}
       {shop.recommendedSchemes && shop.recommendedSchemes.length > 0 ? (
         <p className="sahiti-popup__line">
-          Schemes:{" "}
+          {t("schemes")}{" "}
           {shop.recommendedSchemes
             .slice(0, 2)
             .map((scheme) => scheme.name)
             .join(", ")}
         </p>
       ) : null}
-      <p className="sahiti-popup__coords">{formatShopCoordinates(shop)}</p>
       <p className="sahiti-popup__actions">
         <a href={shopGoogleMapsUrl(shop)} target="_blank" rel="noreferrer">
-          Google Maps
+          {t("googleMaps")}
         </a>
         <a href={shopGoogleDirectionsUrl(shop)} target="_blank" rel="noreferrer">
-          Directions
+          {t("directions")}
         </a>
         {shop.website ? (
           <a href={shop.website} target="_blank" rel="noreferrer">
-            Website
+            {t("website")}
           </a>
         ) : null}
       </p>
       <p className="sahiti-popup__source">
         {shop.source === "adypu-corridor"
-          ? `ADYPU–Lohegaon corridor dataset${corridor?.dataSource ? ` · ${corridor.dataSource}` : " (OSM gather)"}`
-          : "Listed in OpenStreetMap"}
+          ? `${t("corridorSource")}${corridor?.dataSource ? ` · ${corridor.dataSource}` : ` (${t("osmListed")})`}`
+          : t("osmListed")}
       </p>
     </div>
   );
@@ -348,20 +338,21 @@ function ShopLayer({ shops, icons }: { shops: Shop[]; icons: Record<string, L.Di
 
 /** Hover summary for a cluster: how many, and which trades. */
 function ClusterTooltip({ group }: { group: ShopGroup }) {
+  const { t } = useLanguage();
   const counted = new Map<ShopCategory, number>();
   for (const shop of group.shops) {
     counted.set(shop.category, (counted.get(shop.category) ?? 0) + 1);
   }
   const breakdown = [...counted.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([category, count]) => count + " " + category)
+    .map(([category, count]) => `${count} ${t(`cat.${category}`)}`)
     .join(", ");
 
   return (
     <span className="sahiti-cluster-tip">
-      <strong>{group.shops.length} shops</strong>
+      <strong>{t("clusterShops", { n: group.shops.length })}</strong>
       <span>{breakdown}</span>
-      <span className="sahiti-cluster-tip__hint">Click to zoom in</span>
+      <span className="sahiti-cluster-tip__hint">{t("clickToZoom")}</span>
     </span>
   );
 }
@@ -371,8 +362,6 @@ export default function RiskMap({
   shops,
   userPosition = null,
   focusToken = 0,
-  areaFocus = null,
-  areaFocusToken = 0,
   candidate = null,
   onMapClick,
   showHubs = false,
@@ -381,15 +370,14 @@ export default function RiskMap({
   shops: Shop[];
   userPosition?: UserPosition | null;
   focusToken?: number;
-  areaFocus?: ShopFocus | null;
-  areaFocusToken?: number;
-  /** Simulator's picked location, drawn as a sky-blue dot. */
-  candidate?: MapCandidate | null;
-  /** Present when the page wants map clicks (feasibility simulator). */
+  /** Rating's picked location, drawn as a sky-blue dot. */
+  candidate?: { lat: number; lng: number } | null;
+  /** Present when the page wants map clicks (Sahiti Rating). */
   onMapClick?: (lat: number, lng: number) => void;
   /** Show the ADYPU / Lohegaon corridor anchor markers. */
   showHubs?: boolean;
 }) {
+  const { t } = useLanguage();
   const [basemap, setBasemap] = useState<BasemapId>("streets");
   const active = BASEMAPS.find((option) => option.id === basemap) ?? BASEMAPS[0];
 
@@ -417,14 +405,28 @@ export default function RiskMap({
         <TileLayer key={active.id} url={active.url} attribution={active.attribution} />
 
         <RecenterOnUser position={userPosition} token={focusToken} />
-        <FocusOnArea focus={areaFocus} token={areaFocusToken} />
         {onMapClick ? <ClickCatcher onPick={onMapClick} /> : null}
 
         {/* Corridor anchors, as on the SIH dashboard. */}
         {showHubs
-          ? CORRIDOR_HUBS.map((hub) => (
+          ? [
+              {
+                key: "adypu",
+                name: "ADYPU Knowledge City",
+                noteKey: "hubAdypu",
+                lat: 18.6226,
+                lng: 73.9063,
+              },
+              {
+                key: "lohegaon",
+                name: "Lohegaon Central Junction",
+                noteKey: "hubLohegaon",
+                lat: 18.5955,
+                lng: 73.9268,
+              },
+            ].map((hub) => (
               <CircleMarker
-                key={hub.name}
+                key={hub.key}
                 center={[hub.lat, hub.lng]}
                 radius={7}
                 pathOptions={{ color: "#0f172a", weight: 2, fillColor: "#38bdf8", fillOpacity: 1 }}
@@ -432,15 +434,15 @@ export default function RiskMap({
                 <Popup>
                   <div className="sahiti-popup">
                     <p className="sahiti-popup__name">{hub.name}</p>
-                    <p className="sahiti-popup__line">{hub.note}</p>
-                    <p className="sahiti-popup__source">Corridor anchor · SIH PS 26091 gather</p>
+                    <p className="sahiti-popup__line">{t(hub.noteKey)}</p>
+                    <p className="sahiti-popup__source">{t("corridorSource")}</p>
                   </div>
                 </Popup>
               </CircleMarker>
             ))
           : null}
 
-        {/* Candidate location picked for the feasibility simulator. */}
+        {/* Picked location for the Sahiti Rating — described, never coordinates. */}
         {candidate ? (
           <CircleMarker
             center={[candidate.lat, candidate.lng]}
@@ -449,72 +451,58 @@ export default function RiskMap({
           >
             <Popup>
               <div className="sahiti-popup">
-                <p className="sahiti-popup__name">Candidate store location</p>
-                <p className="sahiti-popup__line">
-                  {candidate.lat.toFixed(4)}, {candidate.lng.toFixed(4)}
-                </p>
-                <p className="sahiti-popup__source">
-                  Run “Check this spot” in the feasibility panel below.
-                </p>
+                <p className="sahiti-popup__name">{t("pickedSpot")}</p>
+                <p className="sahiti-popup__line">{t("runRatingHint")}</p>
               </div>
             </Popup>
           </CircleMarker>
         ) : null}
 
-        {/* Research zones: translucent, sized and coloured by opportunity score. */}
-        {zones.map((place) => (
-          <CircleMarker
-            key={place.id}
-            center={[place.latitude, place.longitude]}
-            radius={10 + place.risk_score}
-            pathOptions={{
-              color: colorFor(place.risk_score),
-              fillColor: colorFor(place.risk_score),
-              fillOpacity: 0.35,
-            }}
-          >
-            <Popup>
-              <div className="sahiti-popup">
-                <p className="sahiti-popup__name">{place.name}</p>
-                <p className="sahiti-popup__meta">
-                  {place.business_type} · opportunity {place.risk_score}/10
-                </p>
-                <p className="sahiti-popup__line">
-                  Competition {place.competitor_density}/10 · saturation {place.market_saturation}
-                  /10
-                </p>
-                <p className="sahiti-popup__line">{place.demand_note}</p>
-                <p className="sahiti-popup__source">Sahiti demonstration research</p>
-              </div>
-            </Popup>
-          </CircleMarker>
-        ))}
+        {/*
+         * Sahiti safe zones: three big verdict circles, one per colour band.
+         * Each zone is bucketed by opportunity score into green / amber / red
+         * so the map shows three clear areas instead of many small circles.
+         */}
+        {zones.map((place) => {
+          const bucket = bucketFor(place.risk_score);
+          return (
+            <CircleMarker
+              key={place.id}
+              center={[place.latitude, place.longitude]}
+              radius={bucket.radius}
+              pathOptions={{
+                color: bucket.color,
+                fillColor: bucket.color,
+                fillOpacity: 0.28,
+                weight: 2,
+              }}
+            >
+              <Popup>
+                <div className="sahiti-popup">
+                  <p className="sahiti-popup__name">
+                    {t("zoneOpportunity", { name: place.name, score: place.risk_score })}
+                  </p>
+                  <p className="sahiti-popup__line">{place.demand_note}</p>
+                  <p className="sahiti-popup__source">{t("zonePopupSource")}</p>
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
 
         <ShopLayer shops={shops} icons={shopIcons} />
 
         {userPosition && (
-          <>
-            <Circle
-              center={[userPosition.lat, userPosition.lng]}
-              radius={userPosition.accuracy}
-              pathOptions={{
-                color: "#003D7A",
-                weight: 1,
-                fillColor: "#003D7A",
-                fillOpacity: 0.1,
-              }}
-            />
-            <Marker position={[userPosition.lat, userPosition.lng]} icon={USER_ICON}>
-              <Popup>
-                <div className="sahiti-popup">
-                  <p className="sahiti-popup__name">You are here</p>
-                  <p className="sahiti-popup__line">
-                    Accurate to about {Math.round(userPosition.accuracy)} m
-                  </p>
-                </div>
-              </Popup>
-            </Marker>
-          </>
+          <Marker position={[userPosition.lat, userPosition.lng]} icon={USER_ICON}>
+            <Popup>
+              <div className="sahiti-popup">
+                <p className="sahiti-popup__name">{t("youAreHere")}</p>
+                <p className="sahiti-popup__line">
+                  {t("accuracy", { m: Math.round(userPosition.accuracy) })}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
         )}
       </MapContainer>
 
@@ -526,7 +514,7 @@ export default function RiskMap({
             aria-pressed={basemap === option.id}
             onClick={() => setBasemap(option.id)}
           >
-            {option.label}
+            {t(option.labelKey)}
           </button>
         ))}
       </div>

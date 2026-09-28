@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Mic, MicOff, Plus, Volume2, VolumeX } from "lucide-react";
+import { Mic, MicOff, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -29,11 +29,11 @@ type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
 
 /**
  * The Sahiti AI chat, embedded inside the feed's "Sahiti AI" tab. Same engine
- * and storage as the /assistant page; a compact single-conversation view.
+ * and storage as the old /assistant page; a compact single-conversation view.
  */
 export default function AssistantEmbedded() {
   const { user } = useSession();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const queryClient = useQueryClient();
   const [threadId, setThreadId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -82,10 +82,17 @@ export default function AssistantEmbedded() {
   function toggleDictation() {
     if (dictation.listening) dictation.stop();
     else {
+      // Start from a clean slate so the transcript does not append to old text.
       setInput("");
       dictation.clearError();
       dictation.start();
     }
+  }
+
+  async function deleteThread(id: string) {
+    await supabase.from("chat_threads").delete().eq("id", id);
+    if (threadId === id) setThreadId(null);
+    await queryClient.invalidateQueries({ queryKey: ["threads", user?.id] });
   }
 
   async function send(event: FormEvent) {
@@ -133,7 +140,7 @@ export default function AssistantEmbedded() {
 
       if (!response.ok || !response.body) {
         const detail = await response.text();
-        let message = "The assistant could not reply";
+        let message = t("aiUnavailable");
         try {
           const parsed = JSON.parse(detail) as { error?: string };
           if (parsed.error) message = parsed.error;
@@ -168,7 +175,7 @@ export default function AssistantEmbedded() {
         .update({ updated_at: new Date().toISOString() })
         .eq("id", activeThread);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The assistant is unavailable");
+      toast.error(error instanceof Error ? error.message : t("aiUnavailable"));
     } finally {
       setStreaming("");
       setPending([]);
@@ -182,7 +189,7 @@ export default function AssistantEmbedded() {
     const next = !speech.enabled;
     speech.setEnabled(next);
     if (!next) speech.cancel();
-    toast.success(next ? "Replies will be read aloud" : "Spoken replies off");
+    toast.success(next ? t("spokenOn") : t("spokenOff"));
   }
 
   return (
@@ -199,17 +206,17 @@ export default function AssistantEmbedded() {
           }}
         >
           <Plus aria-hidden="true" className="size-4" />
-          New conversation
+          {t("newConversation")}
         </Button>
 
         <ul className="mt-3 space-y-1">
           {threads.slice(0, 8).map((thread) => (
-            <li key={thread.id}>
+            <li key={thread.id} className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setThreadId(thread.id)}
                 className={cn(
-                  "min-w-0 w-full truncate rounded-md px-2 py-2 text-left text-sm",
+                  "min-w-0 flex-1 truncate rounded-md px-2 py-2 text-left text-sm",
                   threadId === thread.id
                     ? "bg-primary font-medium text-primary-foreground"
                     : "hover:bg-secondary",
@@ -217,10 +224,19 @@ export default function AssistantEmbedded() {
               >
                 {thread.title}
               </button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-8"
+                aria-label={t("deleteConversation", { title: thread.title })}
+                onClick={() => void deleteThread(thread.id)}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
             </li>
           ))}
           {threads.length === 0 && (
-            <li className="px-2 py-2 text-sm text-muted-foreground">Nothing here yet.</li>
+            <li className="px-2 py-2 text-sm text-muted-foreground">{t("nothingHere")}</li>
           )}
         </ul>
       </aside>
@@ -229,10 +245,7 @@ export default function AssistantEmbedded() {
         <Conversation className="flex-1" initial="instant" resize="instant">
           <ConversationContent>
             {messages.length === 0 && !streaming && (
-              <ConversationEmptyState
-                title="Ask your first question"
-                description="Tap the microphone and speak, or type. Try: how much loan can I get with ₹50,000 of my own money?"
-              />
+              <ConversationEmptyState title={t("askFirst")} description={t("askFirstHint")} />
             )}
 
             {messages.map((message) => (
@@ -255,7 +268,7 @@ export default function AssistantEmbedded() {
               </Message>
             )}
 
-            {busy && !streaming && <Shimmer>Thinking…</Shimmer>}
+            {busy && !streaming && <Shimmer>{t("thinking")}</Shimmer>}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -265,14 +278,12 @@ export default function AssistantEmbedded() {
             <PromptInputTextarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder={
-                dictation.listening ? "Listening…" : "Ask a business or finance question"
-              }
+              placeholder={dictation.listening ? t("listening") : t("askPlaceholder")}
             />
             <PromptInputFooter>
               <PromptInputTools>
                 <PromptInputButton
-                  tooltip={dictation.listening ? "Stop dictation" : "Speak your question"}
+                  tooltip={dictation.listening ? t("stopDictation") : t("speakQuestion")}
                   aria-pressed={dictation.listening}
                   disabled={!dictation.supported}
                   className={dictation.listening ? "text-destructive" : undefined}
@@ -284,12 +295,12 @@ export default function AssistantEmbedded() {
                     <Mic aria-hidden="true" className="size-4" />
                   )}
                   <span className="sr-only">
-                    {dictation.listening ? "Stop dictation" : "Speak your question"}
+                    {dictation.listening ? t("stopDictation") : t("speakQuestion")}
                   </span>
                 </PromptInputButton>
 
                 <PromptInputButton
-                  tooltip={speech.enabled ? "Turn off spoken replies" : "Read replies aloud"}
+                  tooltip={speech.enabled ? t("spokenOffLabel") : t("spokenToggle")}
                   aria-pressed={speech.enabled}
                   disabled={!speech.supported}
                   className={speech.enabled ? "text-primary" : undefined}
@@ -301,7 +312,7 @@ export default function AssistantEmbedded() {
                     <VolumeX aria-hidden="true" className="size-4" />
                   )}
                   <span className="sr-only">
-                    {speech.enabled ? "Turn off spoken replies" : "Read replies aloud"}
+                    {speech.enabled ? t("spokenOffLabel") : t("spokenToggle")}
                   </span>
                 </PromptInputButton>
               </PromptInputTools>
@@ -310,9 +321,17 @@ export default function AssistantEmbedded() {
             </PromptInputFooter>
           </PromptInput>
 
-          <p className="mt-2 text-xs text-muted-foreground">
-            Sahiti AI can be wrong. Confirm scheme terms with your bank.
-          </p>
+          {dictation.error && (
+            <p role="alert" className="mt-2 text-xs font-medium text-destructive">
+              {dictation.error}
+            </p>
+          )}
+
+          {!dictation.supported && (
+            <p className="mt-2 text-xs text-muted-foreground">{t("voiceNeedsBrowser")}</p>
+          )}
+
+          <p className="mt-2 text-xs text-muted-foreground">{t("aiDisclaimer")}</p>
         </div>
       </div>
     </div>

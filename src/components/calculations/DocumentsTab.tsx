@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SCHEME_SECTORS, SCHEMES } from "@/data/schemes";
+import { useLanguage } from "@/lib/i18n";
 import { Panel, ShareBar } from "./shared";
 
 /*
@@ -22,22 +23,18 @@ import { Panel, ShareBar } from "./shared";
 
 type AspectId = "identity" | "business" | "finance" | "project" | "premises" | "scheme";
 
-const ASPECTS: Array<{ id: AspectId; title: string; blurb: string }> = [
-  { id: "identity", title: "Identity and address", blurb: "What the bank verifies first." },
-  { id: "business", title: "Business registration", blurb: "Proof the venture actually exists." },
-  { id: "finance", title: "Financial records", blurb: "What you earn, spend and already owe." },
-  {
-    id: "project",
-    title: "Project and quotations",
-    blurb: "Backs up the amount you are asking for.",
-  },
-  { id: "premises", title: "Premises", blurb: "Where the work really happens." },
-  { id: "scheme", title: "Scheme specific", blurb: "Extras your chosen scheme insists on." },
+const ASPECTS: Array<{ id: AspectId; titleKey: string; blurbKey: string }> = [
+  { id: "identity", titleKey: "docsAspectIdentity", blurbKey: "docsAspectIdentityBlurb" },
+  { id: "business", titleKey: "docsAspectBusiness", blurbKey: "docsAspectBusinessBlurb" },
+  { id: "finance", titleKey: "docsAspectFinance", blurbKey: "docsAspectFinanceBlurb" },
+  { id: "project", titleKey: "docsAspectProject", blurbKey: "docsAspectProjectBlurb" },
+  { id: "premises", titleKey: "docsAspectPremises", blurbKey: "docsAspectPremisesBlurb" },
+  { id: "scheme", titleKey: "docsAspectScheme", blurbKey: "docsAspectSchemeBlurb" },
 ];
 
 type DocItem = {
   id: string;
-  label: string;
+  labelKey: string;
   aspect: AspectId;
   /** Only offered for these business categories. Empty means every category. */
   sectors?: string[];
@@ -47,96 +44,96 @@ type DocItem = {
 
 const DOCUMENTS: DocItem[] = [
   // Identity and address
-  { id: "photo", label: "Passport size photographs", aspect: "identity" },
-  { id: "id-proof", label: "Aadhaar and PAN copies", aspect: "identity" },
-  { id: "addr-proof", label: "Address proof for home and business place", aspect: "identity" },
+  { id: "photo", labelKey: "docPhoto", aspect: "identity" },
+  { id: "id-proof", labelKey: "docIdProof", aspect: "identity" },
+  { id: "addr-proof", labelKey: "docAddrProof", aspect: "identity" },
 
   // Business registration
-  { id: "udyam", label: "Udyam registration certificate", aspect: "business" },
-  { id: "gst", label: "GST registration, if your turnover requires it", aspect: "business" },
-  { id: "shop-est", label: "Shop and establishment registration", aspect: "business" },
+  { id: "udyam", labelKey: "docUdyam", aspect: "business" },
+  { id: "gst", labelKey: "docGst", aspect: "business" },
+  { id: "shop-est", labelKey: "docShopEst", aspect: "business" },
   {
     id: "fssai",
-    label: "FSSAI registration or licence",
+    labelKey: "docFssai",
     aspect: "business",
     sectors: ["Food"],
   },
   {
     id: "craft-proof",
-    label: "Proof of craft or trade being practised",
+    labelKey: "docCraftProof",
     aspect: "business",
     sectors: ["Artisan"],
   },
 
   // Financial records
-  { id: "bank-6m", label: "Bank statements for the last six months", aspect: "finance" },
-  { id: "existing-loans", label: "Details of loans or EMIs already running", aspect: "finance" },
-  { id: "itr", label: "Last year's income tax return, if filed", aspect: "finance" },
+  { id: "bank-6m", labelKey: "docBank6m", aspect: "finance" },
+  { id: "existing-loans", labelKey: "docExistingLoans", aspect: "finance" },
+  { id: "itr", labelKey: "docItr", aspect: "finance" },
   {
     id: "milk-buyer",
-    label: "Milk collection or buyer arrangement note",
+    labelKey: "docMilkBuyer",
     aspect: "finance",
     sectors: ["Dairy"],
   },
 
   // Project and quotations
-  { id: "quotes", label: "Quotations for equipment, stock or machinery", aspect: "project" },
-  { id: "cost-sheet", label: "Project cost working sheet", aspect: "project" },
-  { id: "plan", label: "Short business plan with expected sales and costs", aspect: "project" },
+  { id: "quotes", labelKey: "docQuotes", aspect: "project" },
+  { id: "cost-sheet", labelKey: "docCostSheet", aspect: "project" },
+  { id: "plan", labelKey: "docPlan", aspect: "project" },
   {
     id: "supplier-list",
-    label: "Supplier list with price comparisons",
+    labelKey: "docSupplierList",
     aspect: "project",
     sectors: ["Retail", "General store", "Hardware"],
   },
   {
     id: "cattle-quote",
-    label: "Cattle purchase quotation",
+    labelKey: "docCattleQuote",
     aspect: "project",
     sectors: ["Dairy"],
   },
   {
     id: "crop-plan",
-    label: "Crop or input purchase plan",
+    labelKey: "docCropPlan",
     aspect: "project",
     sectors: ["Agriculture"],
   },
   {
     id: "tool-quote",
-    label: "Tool purchase quotation",
+    labelKey: "docToolQuote",
     aspect: "project",
     sectors: ["Repair", "Artisan"],
   },
   {
     id: "machinery-quote",
-    label: "Machinery quotation",
+    labelKey: "docMachineryQuote",
     aspect: "project",
     sectors: ["Manufacturing", "Textiles"],
   },
 
   // Premises
-  { id: "rent", label: "Rent agreement or ownership proof", aspect: "premises" },
+  { id: "rent", labelKey: "docRent", aspect: "premises" },
   {
     id: "kitchen",
-    label: "Kitchen or stall premises proof",
+    labelKey: "docKitchen",
     aspect: "premises",
     sectors: ["Food"],
   },
   {
     id: "land",
-    label: "Land record or lease agreement",
+    labelKey: "docLand",
     aspect: "premises",
     sectors: ["Agriculture", "Dairy"],
   },
   {
     id: "workshop",
-    label: "Workshop premises proof",
+    labelKey: "docWorkshop",
     aspect: "premises",
     sectors: ["Repair", "Garage"],
   },
   {
     id: "power",
-    label: "Power connection or approval proof",
+    labelKey: "docPower",
     aspect: "premises",
     sectors: ["Manufacturing"],
   },
@@ -144,61 +141,61 @@ const DOCUMENTS: DocItem[] = [
   // Scheme specific
   {
     id: "trade-list",
-    label: "Trade declaration against the notified artisan list",
+    labelKey: "docTradeList",
     aspect: "scheme",
     schemes: ["pm-vishwakarma"],
   },
   {
     id: "vending-cert",
-    label: "Certificate of vending or letter of recommendation",
+    labelKey: "docVendingCert",
     aspect: "scheme",
     schemes: ["pm-svanidhi"],
   },
   {
     id: "vending-photo",
-    label: "Photograph of the vending spot",
+    labelKey: "docVendingPhoto",
     aspect: "scheme",
     schemes: ["pm-svanidhi"],
   },
   {
     id: "category-cert",
-    label: "Category certificate, where applicable",
+    labelKey: "docCategoryCert",
     aspect: "scheme",
     schemes: ["stand-up-india", "pmegp"],
   },
   {
     id: "greenfield",
-    label: "Greenfield project declaration",
+    labelKey: "docGreenfield",
     aspect: "scheme",
     schemes: ["stand-up-india"],
   },
   {
     id: "margin-proof",
-    label: "Proof of margin money",
+    labelKey: "docMarginProof",
     aspect: "scheme",
     schemes: ["sidbi-micro"],
   },
   {
     id: "collateral",
-    label: "Collateral or guarantee details, if asked",
+    labelKey: "docCollateral",
     aspect: "scheme",
     schemes: ["sidbi-term-loan", "cgtmse"],
   },
   {
     id: "project-report",
-    label: "Detailed project report",
+    labelKey: "docProjectReport",
     aspect: "scheme",
     schemes: ["sidbi-term-loan", "ahidf", "nlm"],
   },
   {
     id: "education-cert",
-    label: "Education certificate",
+    labelKey: "docEducationCert",
     aspect: "scheme",
     schemes: ["pmegp"],
   },
   {
     id: "licence",
-    label: "Manufacturing or trade licence",
+    labelKey: "docLicence",
     aspect: "scheme",
     schemes: ["pli-pharma", "pli-telecom", "spi", "amdcf"],
   },
@@ -211,6 +208,7 @@ function matches(item: DocItem, sector: string, schemeId: string) {
 }
 
 export function DocumentsTab() {
+  const { t } = useLanguage();
   const [sector, setSector] = useState<string>("Retail");
   const [schemeId, setSchemeId] = useState<string>("pmmy-mudra");
   const [collected, setCollected] = useState<Record<string, boolean>>({});
@@ -233,11 +231,11 @@ export function DocumentsTab() {
   function download() {
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text("Sahiti document checklist", 14, 20);
+    doc.text(t("docsPdfTitle"), 14, 20);
     doc.setFontSize(11);
-    doc.text(`Business category: ${sector}`, 14, 30);
-    doc.text(`Scheme: ${selectedScheme?.name ?? "Not selected"}`, 14, 37);
-    doc.text(`Progress: ${done} of ${total}`, 14, 44);
+    doc.text(`${t("docsPdfCategory")}: ${t(`sector.${sector}`)}`, 14, 30);
+    doc.text(`${t("docsPdfScheme")}: ${selectedScheme?.name ?? t("docsNotSelected")}`, 14, 37);
+    doc.text(`${t("docsPdfProgress")}: ${done} / ${total}`, 14, 44);
 
     let y = 56;
     for (const group of groups) {
@@ -246,7 +244,7 @@ export function DocumentsTab() {
         y = 20;
       }
       doc.setFontSize(12);
-      doc.text(group.title, 14, y);
+      doc.text(t(group.titleKey), 14, y);
       y += 7;
       doc.setFontSize(10);
       for (const item of group.items) {
@@ -254,25 +252,25 @@ export function DocumentsTab() {
           doc.addPage();
           y = 20;
         }
-        doc.text(`${collected[item.id] ? "[x]" : "[ ]"} ${item.label}`, 18, y);
+        doc.text(`${collected[item.id] ? "[x]" : "[ ]"} ${t(item.labelKey)}`, 18, y);
         y += 6;
       }
       y += 4;
     }
 
     doc.setFontSize(9);
-    doc.text("Confirm the final list with your bank branch.", 14, Math.min(y + 4, 285));
+    doc.text(t("docsPdfFooter"), 14, Math.min(y + 4, 285));
     doc.save("sahiti-document-checklist.pdf");
-    toast.success("Checklist downloaded");
+    toast.success(t("docsDownloaded"));
   }
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <Panel title="What are you preparing for?" className="h-fit">
+        <Panel title={t("docsPrepareTitle")} className="h-fit">
           <div className="space-y-4">
             <div>
-              <Label htmlFor="doc-sector">Business category</Label>
+              <Label htmlFor="doc-sector">{t("docsBusinessCategory")}</Label>
               <Select value={sector} onValueChange={setSector}>
                 <SelectTrigger id="doc-sector" className="mt-2">
                   <SelectValue />
@@ -280,7 +278,7 @@ export function DocumentsTab() {
                 <SelectContent>
                   {SCHEME_SECTORS.map((item) => (
                     <SelectItem key={item} value={item}>
-                      {item}
+                      {t(`sector.${item}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -288,7 +286,7 @@ export function DocumentsTab() {
             </div>
 
             <div>
-              <Label htmlFor="doc-scheme">Scheme you have in mind</Label>
+              <Label htmlFor="doc-scheme">{t("docsSchemeInMind")}</Label>
               <Select value={schemeId} onValueChange={setSchemeId}>
                 <SelectTrigger id="doc-scheme" className="mt-2">
                   <SelectValue />
@@ -305,22 +303,22 @@ export function DocumentsTab() {
 
             <div className="rounded-md border bg-secondary p-4">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="font-medium">Overall</span>
+                <span className="font-medium">{t("docsOverall")}</span>
                 <span className="tabular-nums text-muted-foreground">
-                  {done} of {total}
+                  {done} / {total}
                 </span>
               </div>
               <div className="mt-2">
                 <ShareBar
                   percent={total === 0 ? 0 : (done / total) * 100}
-                  label="Documents collected"
+                  label={t("docsCollectedLabel")}
                 />
               </div>
             </div>
 
             <Button className="w-full" onClick={download}>
               <Download aria-hidden="true" className="size-4" />
-              Download checklist
+              {t("docsDownload")}
             </Button>
           </div>
         </Panel>
@@ -333,8 +331,8 @@ export function DocumentsTab() {
               <section key={group.id} className="rounded-md border">
                 <header className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-4">
                   <div>
-                    <h2 className="text-base font-semibold">{group.title}</h2>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{group.blurb}</p>
+                    <h2 className="text-base font-semibold">{t(group.titleKey)}</h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{t(group.blurbKey)}</p>
                   </div>
                   <span
                     className={
@@ -360,7 +358,7 @@ export function DocumentsTab() {
                         htmlFor={`doc-${item.id}`}
                         className="text-sm font-normal leading-6 text-foreground"
                       >
-                        {item.label}
+                        {t(item.labelKey)}
                       </Label>
                     </li>
                   ))}
@@ -368,9 +366,7 @@ export function DocumentsTab() {
               </section>
             );
           })}
-          <p className="text-xs leading-5 text-muted-foreground">
-            A starting list. Branches ask for more depending on the case and the amount.
-          </p>
+          <p className="text-xs leading-5 text-muted-foreground">{t("docsStartingList")}</p>
         </div>
       </div>
     </div>

@@ -17,14 +17,22 @@ import { formatSchemeAmount, getScheme, SCHEME_SECTORS } from "@/data/schemes";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate } from "@/lib/dates";
 import { formatINR } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
 import { CheckRow, Field, MoneyField, Panel } from "./shared";
 import { SchemeFinder } from "./SchemeFinder";
 
-const STEP_LABELS = ["Scheme", "Eligibility", "Details", "Receipt"] as const;
+const STEP_KEYS = ["applyStep1", "applyStep2", "applyStep3", "applyStep4"] as const;
+const STATUS_KEYS = [
+  "applyStatusSubmitted",
+  "applyStatusReview",
+  "applyStatusDocs",
+  "applyStatusApproved",
+] as const;
 const STATUS_STAGES = ["Submitted", "Under review", "Documents requested", "Approved"];
 
 export function SchemeApplyTab() {
+  const { t } = useLanguage();
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
@@ -83,18 +91,16 @@ export function SchemeApplyTab() {
   function goNext() {
     setError("");
     if (step === 1) {
-      if (!scheme) return setError("Pick a scheme to continue.");
+      if (!scheme) return setError(t("applyErrPickScheme"));
       return setStep(2);
     }
     if (step === 2) {
       if (!form.operating || !form.indian) {
-        return setError("Confirm both eligibility statements before continuing.");
+        return setError(t("applyErrConfirmEligibility"));
       }
-      if (!(eligibility.amount > 0)) return setError("Enter the loan amount you need.");
+      if (!(eligibility.amount > 0)) return setError(t("applyErrEnterAmount"));
       if (!eligibility.withinBand && scheme) {
-        return setError(
-          `This scheme runs from ${formatSchemeAmount(scheme)}. Adjust the amount or pick another scheme.`,
-        );
+        return setError(t("applyErrBand", { band: formatSchemeAmount(scheme) }));
       }
       return setStep(3);
     }
@@ -104,10 +110,10 @@ export function SchemeApplyTab() {
     if (!user || !scheme) return;
     setError("");
     if (!/^\d{4}$/.test(form.aadhaar_last_four)) {
-      return setError("Enter the last four digits of Aadhaar only.");
+      return setError(t("applyErrAadhaar"));
     }
     if (!(eligibility.amount > 0) || eligibility.margin < 0) {
-      return setError("Enter a valid loan amount and margin.");
+      return setError(t("applyErrAmountMargin"));
     }
 
     const reference = `SAH-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
@@ -135,7 +141,7 @@ export function SchemeApplyTab() {
     setReceipt(reference);
     setStep(4);
     await queryClient.invalidateQueries({ queryKey: ["scheme-applications", user.id] });
-    toast.success("Application recorded");
+    toast.success(t("applyRecordedToast"));
   }
 
   function restart() {
@@ -156,12 +162,12 @@ export function SchemeApplyTab() {
 
   return (
     <div className="space-y-8">
-      <ol className="grid grid-cols-4 gap-2" aria-label={`Step ${step} of 4`}>
-        {STEP_LABELS.map((label, index) => {
+      <ol className="grid grid-cols-4 gap-2" aria-label={t("applyStepOf", { step, total: 4 })}>
+        {STEP_KEYS.map((labelKey, index) => {
           const position = index + 1;
           const done = step > position;
           return (
-            <li key={label} className="min-w-0">
+            <li key={labelKey} className="min-w-0">
               <div className={step >= position ? "h-1.5 bg-primary" : "h-1.5 bg-muted"} />
               <p
                 className={
@@ -172,7 +178,7 @@ export function SchemeApplyTab() {
                       : "mt-2 truncate text-xs text-muted-foreground"
                 }
               >
-                {position}. {label}
+                {position}. {t(labelKey)}
               </p>
             </li>
           );
@@ -183,10 +189,8 @@ export function SchemeApplyTab() {
         {step === 1 && (
           <div className="space-y-5">
             <div>
-              <h2 className="text-lg font-semibold">Find the right scheme</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Narrow by trade and amount. Matches update as you type.
-              </p>
+              <h2 className="text-lg font-semibold">{t("applyFindScheme")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("applyFindSchemeDesc")}</p>
             </div>
             <SchemeFinder
               selectedId={form.schemeId}
@@ -203,14 +207,14 @@ export function SchemeApplyTab() {
         {step === 2 && scheme && (
           <div className="space-y-5">
             <div>
-              <h2 className="text-lg font-semibold">Eligibility</h2>
+              <h2 className="text-lg font-semibold">{t("applyStep2")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {scheme.name} · {formatSchemeAmount(scheme)}
               </p>
             </div>
 
             <div className="rounded-md border bg-secondary p-4">
-              <h3 className="text-sm font-semibold">What this scheme normally asks for</h3>
+              <h3 className="text-sm font-semibold">{t("applySchemeAsks")}</h3>
               <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
                 {scheme.eligibility.map((point) => (
                   <li key={point} className="flex gap-2">
@@ -226,25 +230,25 @@ export function SchemeApplyTab() {
                 id="operating"
                 checked={form.operating}
                 onChange={(value) => setForm({ ...form, operating: value })}
-                label="My business runs, or will run, in India."
+                label={t("applyCheckOperating")}
               />
               <CheckRow
                 id="indian"
                 checked={form.indian}
                 onChange={(value) => setForm({ ...form, indian: value })}
-                label="I am an Indian resident and can prove identity."
+                label={t("applyCheckIndian")}
               />
               <CheckRow
                 id="first-loan"
                 checked={form.firstLoan}
                 onChange={(value) => setForm({ ...form, firstLoan: value })}
-                label="This is my first formal loan for this project, where the scheme requires it."
+                label={t("applyCheckFirstLoan")}
               />
               <MoneyField
                 id="eligibility-amount"
-                label="Loan amount required"
+                label={t("applyLoanAmount")}
                 value={form.loan_amount}
-                hint={`Scheme band: ${formatSchemeAmount(scheme)}`}
+                hint={`${t("applySchemeBand")}: ${formatSchemeAmount(scheme)}`}
                 onChange={(value) => setForm({ ...form, loan_amount: value })}
               />
             </div>
@@ -252,7 +256,7 @@ export function SchemeApplyTab() {
             {eligibility.passes && (
               <div className="flex items-center gap-2 rounded-md bg-secondary p-3 text-sm">
                 <CheckCircle2 aria-hidden="true" className="size-4 text-success" />
-                Everything lines up for this scheme.
+                {t("applyAllSet")}
               </div>
             )}
           </div>
@@ -261,15 +265,15 @@ export function SchemeApplyTab() {
         {step === 3 && scheme && (
           <div className="space-y-5">
             <div>
-              <h2 className="text-lg font-semibold">Application details</h2>
+              <h2 className="text-lg font-semibold">{t("applyStep3")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Applying to {scheme.name}. Only the last four Aadhaar digits are kept here.
+                {t("applyApplyingTo", { scheme: scheme.name })}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="application-business">Business type</Label>
+                <Label htmlFor="application-business">{t("applyBusinessType")}</Label>
                 <Select
                   value={form.business_type}
                   onValueChange={(value) => setForm({ ...form, business_type: value })}
@@ -280,7 +284,7 @@ export function SchemeApplyTab() {
                   <SelectContent>
                     {SCHEME_SECTORS.map((type) => (
                       <SelectItem key={type} value={type}>
-                        {type}
+                        {t(`sector.${type}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -289,18 +293,18 @@ export function SchemeApplyTab() {
 
               <MoneyField
                 id="application-loan"
-                label="Loan amount required"
+                label={t("applyLoanAmount")}
                 value={form.loan_amount}
                 onChange={(value) => setForm({ ...form, loan_amount: value })}
               />
               <MoneyField
                 id="application-margin"
-                label="Margin capital"
+                label={t("applyMarginCapital")}
                 value={form.margin_capital}
                 onChange={(value) => setForm({ ...form, margin_capital: value })}
               />
 
-              <Field id="aadhaar" label="Aadhaar last 4 digits">
+              <Field id="aadhaar" label={t("applyAadhaarLast4")}>
                 <Input
                   id="aadhaar"
                   className="bg-muted tabular-nums"
@@ -317,7 +321,7 @@ export function SchemeApplyTab() {
               </Field>
 
               <div className="sm:col-span-2">
-                <Field id="udyam" label="Udyam registration number (optional)">
+                <Field id="udyam" label={t("applyUdyamNumber")}>
                   <Input
                     id="udyam"
                     className="bg-muted"
@@ -333,13 +337,13 @@ export function SchemeApplyTab() {
 
             <div className="rounded-md border bg-secondary p-4 text-sm">
               <div className="flex flex-wrap justify-between gap-2">
-                <span className="text-muted-foreground">Requested</span>
+                <span className="text-muted-foreground">{t("applyRequested")}</span>
                 <span className="font-medium tabular-nums">
                   {formatINR(eligibility.amount || 0)}
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap justify-between gap-2">
-                <span className="text-muted-foreground">Your margin</span>
+                <span className="text-muted-foreground">{t("applyYourMargin")}</span>
                 <span className="font-medium tabular-nums">
                   {formatINR(eligibility.margin || 0)}
                 </span>
@@ -351,20 +355,20 @@ export function SchemeApplyTab() {
         {step === 4 && receipt && scheme && (
           <div className="py-6 text-center">
             <CheckCircle2 aria-hidden="true" className="mx-auto size-10 text-success" />
-            <h2 className="mt-3 text-xl font-semibold">Application recorded</h2>
+            <h2 className="mt-3 text-xl font-semibold">{t("applyRecordedTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {scheme.name}. Quote this reference when you follow up.
+              {t("applyQuoteReference", { scheme: scheme.name })}
             </p>
             <p className="mx-auto mt-5 w-fit rounded-md border bg-muted px-4 py-3 font-mono text-base font-semibold">
               {receipt}
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               <Button variant="outline" onClick={restart}>
-                Start another
+                {t("applyStartAnother")}
               </Button>
               <Button asChild>
                 <a href={scheme.portalUrl} target="_blank" rel="noreferrer">
-                  Apply on Udyamimitra
+                  {t("applyOnUdyamimitra")}
                   <ExternalLink aria-hidden="true" className="size-4" />
                 </a>
               </Button>
@@ -392,12 +396,12 @@ export function SchemeApplyTab() {
                 setStep((value) => Math.max(1, value - 1));
               }}
             >
-              Back
+              {t("applyBack")}
             </Button>
             {step < 3 ? (
-              <Button onClick={goNext}>Continue</Button>
+              <Button onClick={goNext}>{t("applyContinue")}</Button>
             ) : (
-              <Button onClick={() => void submit()}>Submit application</Button>
+              <Button onClick={() => void submit()}>{t("applySubmit")}</Button>
             )}
           </div>
         )}
@@ -405,7 +409,7 @@ export function SchemeApplyTab() {
 
       {applications.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold">Your applications</h2>
+          <h2 className="text-lg font-semibold">{t("applyYourApplications")}</h2>
           <div className="mt-4 space-y-4">
             {applications.map((application) => {
               const current = Math.max(0, STATUS_STAGES.indexOf(application.status));
@@ -419,14 +423,19 @@ export function SchemeApplyTab() {
                         {formatDate(String(application.submitted_at).slice(0, 10))}
                       </p>
                     </div>
-                    <Badge>{application.status}</Badge>
+                    <Badge>
+                      {t(
+                        STATUS_KEYS[STATUS_STAGES.indexOf(application.status)] ??
+                          "applyStatusSubmitted",
+                      )}
+                    </Badge>
                   </div>
 
                   <ol className="mt-5 grid grid-cols-4 gap-2">
-                    {STATUS_STAGES.map((stage, index) => {
+                    {STATUS_KEYS.map((stageKey, index) => {
                       const reached = index <= current;
                       return (
-                        <li key={stage} className="text-center">
+                        <li key={stageKey} className="text-center">
                           <div className="flex items-center">
                             <div
                               className={
@@ -448,7 +457,7 @@ export function SchemeApplyTab() {
                               }
                             />
                           </div>
-                          <p className="mt-2 text-[11px] text-muted-foreground">{stage}</p>
+                          <p className="mt-2 text-[11px] text-muted-foreground">{t(stageKey)}</p>
                         </li>
                       );
                     })}
@@ -460,10 +469,7 @@ export function SchemeApplyTab() {
         </section>
       )}
 
-      <p className="text-xs leading-5 text-muted-foreground">
-        This records a planning application inside Sahiti. Sanction, documents and disbursement stay
-        with the bank or the administering ministry.
-      </p>
+      <p className="text-xs leading-5 text-muted-foreground">{t("applyDisclaimer")}</p>
     </div>
   );
 }
