@@ -51,6 +51,9 @@ brag-output/
 # Extracted SIH data dumps (source zips live outside the repo)
 sih_data_extracted/
 
+# Local SIH data zips (large binaries, not source)
+sih_adypu_lohegaon_data*.zip
+
 # Local machine helpers (dev server launchers)
 start-dev.sh
 sahiti-dev-launcher.sh
