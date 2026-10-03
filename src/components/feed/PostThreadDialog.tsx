@@ -10,8 +10,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PostMedia } from "@/components/feed/PostMedia";
 import { findSchemeByLabel, formatSchemeAmount } from "@/data/schemes";
 import { timeAgo } from "@/lib/format";
+import type { FeedMedia } from "@/lib/feedMedia";
 import { useLanguage } from "@/lib/i18n";
 
 export type FeedPost = {
@@ -24,6 +26,8 @@ export type FeedPost = {
   category: string;
   region: string;
   scheme_type: string;
+  /** Storage path of the attached photo or clip inside the media bucket. */
+  image_url: string | null;
   created_at: string;
 };
 
@@ -37,6 +41,7 @@ export type FeedComment = {
 
 export function PostThreadDialog({
   post,
+  media,
   comments,
   isSaved,
   onClose,
@@ -45,6 +50,7 @@ export function PostThreadDialog({
   onShare,
 }: {
   post: FeedPost | null;
+  media: (FeedMedia & { url: string }) | undefined;
   comments: FeedComment[];
   isSaved: boolean;
   onClose: () => void;
@@ -94,6 +100,8 @@ export function PostThreadDialog({
             </DialogHeader>
 
             <p className="text-sm leading-7">{post.content}</p>
+
+            <PostMedia media={media} className="mt-4 max-h-[60dvh]" />
 
             {scheme && (
               <section className="rounded-md border bg-secondary p-4">

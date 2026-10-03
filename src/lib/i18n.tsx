@@ -641,6 +641,19 @@ const en: Dict = {
   termsS8H: "8. Governing law and disputes",
   termsS8:
     "These terms are governed by the laws of India. Any dispute shall be referred to arbitration by a sole arbitrator under the Arbitration and Conciliation Act 1996. The seat and venue of arbitration shall be New Delhi and the language shall be English. Courts at New Delhi shall have exclusive jurisdiction in all other matters.",
+
+  // Feed media
+  postAddMedia: "Add a photo or video",
+  postChangeMedia: "Change",
+  postRemoveMedia: "Remove",
+  postUploading: "Uploading…",
+  postErrMediaType: "Only a photo or a video can be added here.",
+  postErrPhotoSize: "A photo can be up to 5 MB.",
+  postErrVideoSize: "A video can be up to 25 MB.",
+  postPostedToastMedia: "Posted with your photo",
+  postMediaAlt: "Photo attached to this post",
+  postVideoLabel: "Video attached to this post",
+  postNoMediaYet: "No photo or video yet",
 };
 
 const labels: Record<Locale, Dict> = {
@@ -1268,6 +1281,19 @@ const labels: Record<Locale, Dict> = {
     termsS8H: "8. लागू क़ानून और विवाद",
     termsS8:
       "इन शर्तों पर भारत के क़ानून लागू होते हैं। किसी भी विवाद को पंचाट और सुलह अधिनियम 1996 के अंतर्गत एकल पंच के समक्ष संदर्भित किया जाएगा। पंचाट का स्थान नई दिल्ली और भाषा अंग्रेज़ी होगी। अन्य सभी मामलों में नई दिल्ली की अदालतों को अनन्य क्षेत्राधिकार प्राप्त होगा।",
+
+    // Feed media
+    postAddMedia: "फ़ोटो या वीडियो जोड़ें",
+    postChangeMedia: "बदलें",
+    postRemoveMedia: "हटाएँ",
+    postUploading: "अपलोड हो रहा है…",
+    postErrMediaType: "यहाँ केवल फ़ोटो या वीडियो जोड़ा जा सकता है।",
+    postErrPhotoSize: "फ़ोटो 5 MB तक हो सकती है।",
+    postErrVideoSize: "वीडियो 25 MB तक हो सकता है।",
+    postPostedToastMedia: "आपकी फ़ोटो के साथ पोस्ट हो गई",
+    postMediaAlt: "इस पोस्ट से जुड़ी फ़ोटो",
+    postVideoLabel: "इस पोस्ट से जुड़ा वीडियो",
+    postNoMediaYet: "अभी कोई फ़ोटो या वीडियो नहीं",
   },
   mr: {
     appName: "साहिती",
@@ -1886,6 +1912,19 @@ const labels: Record<Locale, Dict> = {
     termsS8H: "8. लागू कायदा आणि वाद",
     termsS8:
       "या अटींवर भारताचे कायदे लागू होतात. कोणताही वाद पंचनामा व सुलह अधिनियम 1996 अंतर्गत एकमेव मध्यस्थासमोर पाठवला जाईल. मध्यस्थीचे ठिकाण नवी दिल्ली आणि भाषा इंग्रजी असेल. इतर सर्व बाबतींत नवी दिल्ली येथील न्यायालयांना अनन्य अधिकारक्षेत्र राहील.",
+
+    // Feed media
+    postAddMedia: "फोटो किंवा व्हिडिओ जोडा",
+    postChangeMedia: "बदला",
+    postRemoveMedia: "काढा",
+    postUploading: "अपलोड होत आहे…",
+    postErrMediaType: "इथे फक्त फोटो किंवा व्हिडिओ जोडता येईल.",
+    postErrPhotoSize: "फोटो 5 MB पर्यंत असू शकते.",
+    postErrVideoSize: "व्हिडिओ 25 MB पर्यंत असू शकते.",
+    postPostedToastMedia: "तुमच्या फोटोसह पोस्ट झाली",
+    postMediaAlt: "या पोस्टमधला फोटो",
+    postVideoLabel: "या पोस्टमधले व्हिडिओ",
+    postNoMediaYet: "अजून फोटो किंवा व्हिडिओ नाही",
   },
   gu: {
     appName: "સાહિતિ",
@@ -2499,6 +2538,19 @@ const labels: Record<Locale, Dict> = {
     termsS8H: "8. લાગુ કાયદો અને વિવાદ",
     termsS8:
       "આ શરતો પર ભારતના કાયદા લાગુ પડે છે. કોઈપણ વિવાદ પંચાદર અને સુલહ અધિનિયમ 1996 અન્વયે એકલ મધ્યસ્થી સમક્ષ વિવાદાસ્પદ કરવામાં આવશે. મધ્યસ્થીનું સ્થળ નવી દિલ્હી અને ભાષા અંગ્રેજી રહેશે. અન્ય બધા મામલામાં નવી દિલ્હીની અદાલતોને એકવાર કાયદાની અધિકૃતતા રહેશે.",
+
+    // Feed media
+    postAddMedia: "ફોટો અથવા વિડિયો ઉમેરો",
+    postChangeMedia: "બદલો",
+    postRemoveMedia: "દૂર કરો",
+    postUploading: "અપલોડ થઈ રહ્યું છે…",
+    postErrMediaType: "અહીં ફક્ત ફોટો અથવા વિડિયો ઉમેરી શકાય.",
+    postErrPhotoSize: "ફોટો 5 MB સુધી હોઈ શકે.",
+    postErrVideoSize: "વિડિયો 25 MB સુધી હોઈ શકે.",
+    postPostedToastMedia: "તમારા ફોટા સાથે પોસ્ટ થઈ",
+    postMediaAlt: "આ પોસ્ટ સાથે જોડાયેલો ફોટો",
+    postVideoLabel: "આ પોસ્ટ સાથે જોડાયેલો વિડિયો",
+    postNoMediaYet: "હજી કોઈ ફોટો કે વિડિયો નથી",
   },
   bn: {
     appName: "সাহিতি",
@@ -3118,6 +3170,19 @@ const labels: Record<Locale, Dict> = {
     termsS8H: "8. প্রযোজ্য আইন ও বিরোধ",
     termsS8:
       "এই শর্তাবলি ভারতের আইনে দ্বারা নিয়ন্ত্রিত। কোনো বিরোধ সালিস ও সন্ধি আইন 1996-এর অধীনে একক সালিসকারীর কাছে রেফার করা হবে। সালিসের আসন ও স্থান নতুন দিল্লি এবং ভাষা ইংরেজি হবে। অন্য সব বিষয়ে নতুন দিল্লির আদালতগুলোর একচেটিয়া এখতিয়াদার থাকবে।",
+
+    // Feed media
+    postAddMedia: "ছবি বা ভিডিও যোগ করুন",
+    postChangeMedia: "বদলান",
+    postRemoveMedia: "সরান",
+    postUploading: "আপলোড হচ্ছে…",
+    postErrMediaType: "এখানে শুধু একটি ছবি বা ভিডিও যোগ করা যাবে।",
+    postErrPhotoSize: "ছবি 5 MB পর্যন্ত হতে পারে।",
+    postErrVideoSize: "ভিডিও 25 MB পর্যন্ত হতে পারে।",
+    postPostedToastMedia: "আপনার ছবি সহ পোস্ট হয়েছে",
+    postMediaAlt: "এই পোস্টের সঙ্গে যুক্ত ছবি",
+    postVideoLabel: "এই পোস্টের সঙ্গে যুক্ত ভিডিও",
+    postNoMediaYet: "এখনও কোনো ছবি বা ভিডিও নেই",
   },
   ta: {
     appName: "சாஹிதி",
@@ -3769,6 +3834,19 @@ const labels: Record<Locale, Dict> = {
     termsS8H: "8. பொருந்தும் சட்டமும் தரையாற்ச்சும்",
     termsS8:
       "இந்த விதிமுறைகள் இந்தியாவின் சட்டங்களால் ஆட்சிக்கப்படுகின்றன. எந்த தரையாற்ச்சும் சரப்பு மற்றும் இணைப்பு சட்டம் 1996-இன் கீழ் ஒற்றை நடுவரிடம் அனுப்பப்படும். நடுவின் இடமும் மொழியும் புது டில்லியும் ஆங்கிலமும் ஆகும். மற்ற அனைத்து விஷயங்களிலும் புது டில்லி நீதிமன்றங்களுக்கு மட்டுமே ஆட்சியுடையமை இருக்கும்.",
+
+    // Feed media
+    postAddMedia: "படம் அல்லது வீடியோ சேர்",
+    postChangeMedia: "மாற்று",
+    postRemoveMedia: "நீக்கு",
+    postUploading: "ஏற்றுகிறது…",
+    postErrMediaType: "இங்கே ஒரு படம் அல்லது வீடியோ மட்டுமே சேர்க்க முடியும்.",
+    postErrPhotoSize: "படம் 5 MB வரை இருக்கலாம்.",
+    postErrVideoSize: "வீடியோ 25 MB வரை இருக்கலாம்.",
+    postPostedToastMedia: "உங்கள் படத்துடன் பதிவு செய்யப்பட்டது",
+    postMediaAlt: "இந்த பதிவுடன் இணைந்த படம்",
+    postVideoLabel: "இந்த பதிவுடன் இணைந்த வீடியோ",
+    postNoMediaYet: "இன்னும் படம் அல்லது வீடியோ இல்லை",
   },
   te: {
     appName: "సాహితి",
@@ -4396,6 +4474,19 @@ const labels: Record<Locale, Dict> = {
     termsS8H: "8. వర్తించే చట్టం మరియు వివాదాలు",
     termsS8:
       "ఈ నిబంధనలకు భారత చట్టాలు వర్తిస్తాయి. ఏ వివాదమైనా ఆర్బిట్రేషన్ మరియు సంధి చట్టం 1996 ప్రకారం ఒకే ఆర్బిట్రేటర్ ముందుకు పంపబడుతుంది. ఆర్బిట్రేషన్ స్థలం, స్థాయి నవ్ దిల్లీ మరియు భాష ఇంగ్లీష్. మిగతా అన్ని విషయాల్లో నవ్ దిల్లీ కోర్టులకు మాత్రమే అధికారం.",
+
+    // Feed media
+    postAddMedia: "ఫోటో లేదా వీడియో జోడించండి",
+    postChangeMedia: "మార్చండి",
+    postRemoveMedia: "తొలగించండి",
+    postUploading: "అప్‌లోడ్ అవుతోంది…",
+    postErrMediaType: "ఇక్కడ ఫోటో లేదా వీడియో మాత్రమే జోడించవచ్చు.",
+    postErrPhotoSize: "ఫోటో 5 MB వరకు ఉండవచ్చు.",
+    postErrVideoSize: "వీడియో 25 MB వరకు ఉండవచ్చు.",
+    postPostedToastMedia: "మీ ఫోటోతో పోస్ట్ అయింది",
+    postMediaAlt: "ఈ పోస్ట్‌కు జతచేసిన ఫోటో",
+    postVideoLabel: "ఈ పోస్ట్‌కు జతచేసిన వీడియో",
+    postNoMediaYet: "ఇంకా ఫోటో లేదా వీడియో లేదు",
   },
 };
 

@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Bookmark, MessageSquare, Search, Share2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Bookmark, ImagePlus, MessageSquare, Search, Share2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
+import { PostMedia } from "@/components/feed/PostMedia";
 import {
   PostThreadDialog,
   type FeedComment,
@@ -15,6 +16,15 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  FEED_MEDIA_BUCKET,
+  MAX_PHOTO_BYTES,
+  MAX_VIDEO_BYTES,
+  buildMediaPath,
+  isVideoFile,
+  resolveMediaUrls,
+  type FeedMedia,
+} from "@/lib/feedMedia";
 import { timeAgo } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
@@ -57,6 +67,9 @@ function matchesSearch(post: FeedPost, needle: string) {
     .includes(needle);
 }
 
+/** A selected-but-not-yet-published attachment, previewed from a local blob URL. */
+type PendingMedia = FeedMedia & { previewUrl: string };
+
 /**
  * The one and only feed. It is the home page after sign-in; Sahiti AI has its
  * own tab in the main navigation.
@@ -71,6 +84,24 @@ function Dashboard() {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [openPostId, setOpenPostId] = useState<string | null>(null);
+  const [pendingMedia, setPendingMedia] = useState<PendingMedia | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  // Blob URLs for the composer preview are revoked on replace, on clear and on
+  // unmount, otherwise each selection leaks the whole file for the session.
+  const previewUrlRef = useRef<string | null>(null);
+
+  useEffect(
+    () => () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    },
+    [],
+  );
+
+  function clearPendingMedia() {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPendingMedia(null);
+  }
 
   const { data } = useQuery({
     queryKey: ["feed", user?.id],
@@ -82,8 +113,13 @@ function Dashboard() {
         supabase.from("saved_posts").select("post_id").eq("user_id", user!.id),
         supabase.from("profiles").select("display_name").eq("id", user!.id).maybeSingle(),
       ]);
+      const rows = (posts.data ?? []) as FeedPost[];
+      // The media bucket is private, so attachments only become playable once
+      // their storage paths have been exchanged for signed URLs.
+      const media = await resolveMediaUrls(rows);
       return {
-        posts: (posts.data ?? []) as FeedPost[],
+        posts: rows,
+        media,
         comments: (comments.data ?? []) as FeedComment[],
         saved: new Set((saved.data ?? []).map((row) => row.post_id)),
         name: profile.data?.display_name ?? "Sahiti member",
@@ -107,6 +143,49 @@ function Dashboard() {
   const commentsFor = (postId: string) =>
     (data?.comments ?? []).filter((comment) => comment.post_id === postId);
 
+  async function attachMedia(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    // Reset immediately so picking the same file twice still fires onChange.
+    event.target.value = "";
+    if (!file || !user?.id) return;
+
+    const video = isVideoFile(file);
+    if (!video && !file.type.startsWith("image/")) {
+      setError(t("postErrMediaType"));
+      return;
+    }
+    if (video && file.size > MAX_VIDEO_BYTES) {
+      setError(t("postErrVideoSize"));
+      return;
+    }
+    if (!video && file.size > MAX_PHOTO_BYTES) {
+      setError(t("postErrPhotoSize"));
+      return;
+    }
+
+    setError("");
+    setUploadingMedia(true);
+    const path = buildMediaPath(user.id, file);
+    const { error: uploadError } = await supabase.storage
+      .from(FEED_MEDIA_BUCKET)
+      // contentType is omitted rather than set to undefined: the project
+      // compiles with exactOptionalPropertyTypes, which rejects an explicit
+      // undefined on an optional property.
+      .upload(path, file, file.type ? { contentType: file.type } : {});
+
+    if (uploadError) {
+      setUploadingMedia(false);
+      setError(uploadError.message);
+      return;
+    }
+
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const previewUrl = URL.createObjectURL(file);
+    previewUrlRef.current = previewUrl;
+    setPendingMedia({ path, kind: video ? "video" : "image", previewUrl });
+    setUploadingMedia(false);
+  }
+
   async function publish() {
     setError("");
     const content = draft.trim();
@@ -114,6 +193,7 @@ function Dashboard() {
       setError(t("postedError"));
       return;
     }
+    if (uploadingMedia) return;
     const initials = (data?.name ?? "SA")
       .split(" ")
       .map((part) => part[0])
@@ -127,6 +207,7 @@ function Dashboard() {
       author_initials: initials || "SA",
       post_type: "user",
       content,
+      image_url: pendingMedia?.path ?? null,
       category: "General",
       region: "Lohegaon",
       scheme_type: "Community",
@@ -136,8 +217,9 @@ function Dashboard() {
       return;
     }
     setDraft("");
+    clearPendingMedia();
     await queryClient.invalidateQueries({ queryKey: ["feed", user?.id] });
-    toast.success(t("postedToast"));
+    toast.success(pendingMedia ? t("postPostedToastMedia") : t("postedToast"));
   }
 
   async function toggleSave(postId: string) {
@@ -193,6 +275,7 @@ function Dashboard() {
           <TabsContent value="community" className="mt-6 space-y-6">
             <div className="sahiti-panel p-5">
               <Label htmlFor="post">{t("writePost")}</Label>
+              <Label htmlFor="post">{t("writePost")}</Label>
               <Textarea
                 id="post"
                 className="mt-2 bg-muted"
@@ -202,11 +285,65 @@ function Dashboard() {
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={t("postPlaceholder")}
               />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Label
+                  htmlFor="post-media"
+                  className="inline-flex cursor-pointer items-center gap-1.5 border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                >
+                  <ImagePlus aria-hidden="true" className="size-4" />
+                  {uploadingMedia
+                    ? t("postUploading")
+                    : pendingMedia
+                      ? t("postChangeMedia")
+                      : t("postAddMedia")}
+                </Label>
+                <input
+                  id="post-media"
+                  type="file"
+                  accept="image/*,video/mp4,video/webm,video/quicktime,video/ogg"
+                  className="sr-only"
+                  onChange={(e) => void attachMedia(e)}
+                />
+                {pendingMedia && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={clearPendingMedia}
+                  >
+                    <X aria-hidden="true" className="size-3.5" />
+                    {t("postRemoveMedia")}
+                  </Button>
+                )}
+              </div>
+              {pendingMedia && (
+                <div className="mt-3">
+                  {pendingMedia.kind === "video" ? (
+                    <video
+                      src={pendingMedia.previewUrl}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label={t("postVideoLabel")}
+                      className="max-h-[40dvh] w-full rounded-md bg-black object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={pendingMedia.previewUrl}
+                      alt={t("postMediaAlt")}
+                      className="max-h-64 w-full rounded-md object-cover"
+                    />
+                  )}
+                </div>
+              )}
               <div className="mt-2 flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
                   {draft.length} {t("chars")}
                 </p>
-                <Button onClick={() => void publish()}>{t("post")}</Button>
+                <Button disabled={uploadingMedia} onClick={() => void publish()}>
+                  {t("post")}
+                </Button>
               </div>
               {error && (
                 <p role="alert" className="mt-2 text-xs font-medium text-destructive">
@@ -217,6 +354,7 @@ function Dashboard() {
 
             <PostList
               posts={communityPosts}
+              mediaByPostId={data?.media ?? {}}
               emptyCopy={tab === "community" ? emptyCopy : ""}
               commentsFor={commentsFor}
               isSaved={(id) => data?.saved.has(id) ?? false}
@@ -229,6 +367,7 @@ function Dashboard() {
           <TabsContent value="sahiti" className="mt-6 space-y-6">
             <PostList
               posts={sahitiPosts}
+              mediaByPostId={data?.media ?? {}}
               emptyCopy={tab === "sahiti" ? emptyCopy : ""}
               commentsFor={commentsFor}
               isSaved={(id) => data?.saved.has(id) ?? false}
@@ -261,6 +400,7 @@ function Dashboard() {
 
       <PostThreadDialog
         post={openPost}
+        media={openPost ? data?.media?.[openPost.id] : undefined}
         comments={openPost ? commentsFor(openPost.id) : []}
         isSaved={openPost ? (data?.saved.has(openPost.id) ?? false) : false}
         onClose={() => setOpenPostId(null)}
@@ -274,6 +414,7 @@ function Dashboard() {
 
 function PostList({
   posts,
+  mediaByPostId,
   emptyCopy,
   commentsFor,
   isSaved,
@@ -282,6 +423,7 @@ function PostList({
   onShare,
 }: {
   posts: FeedPost[];
+  mediaByPostId: Record<string, FeedMedia & { url: string }>;
   emptyCopy: string;
   commentsFor: (postId: string) => FeedComment[];
   isSaved: (postId: string) => boolean;
@@ -344,6 +486,13 @@ function PostList({
                 {t("openThread")}
               </span>
             </button>
+
+            {/*
+              Media sits outside the thread button on purpose: a <video> with
+              its own controls cannot be nested inside a <button>, and tapping
+              a clip should play it rather than open the thread.
+            */}
+            <PostMedia media={mediaByPostId[post.id]} />
 
             <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
               <Button variant="ghost" size="sm" onClick={() => onToggleSave(post.id)}>
